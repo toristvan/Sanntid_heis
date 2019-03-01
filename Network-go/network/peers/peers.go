@@ -34,7 +34,6 @@ func Transmitter(port int, id string, transmitEnable <-chan bool) {
 	}
 }
 
-
 func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 
 	var buf [1024]byte
