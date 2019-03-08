@@ -1,11 +1,28 @@
 package main
 
-import "./driver-go-master/elevio"
-import "fmt"
+import (
+	"./driver-go-master/elevio"
+	"fmt"
+)
+
+func costFunction(newFloor int, dir int ) { // IN: currentFloor, Direction, (Queues?) , OUT: Cost
+	floorDiff := (newFloor - currentFloor)
+	cost := floorDiff
+	if floorDiff*dir > 0 && dir != 0 {
+		cost = floorDiff - 1
+	} else if floorDiff*dir < 0 && dir != 0 {
+		cost = floorDiff + 1
+	} else {
+		cost = floorDiff
+	}
+	//Broadcast result with ID
+	return cost
+}
 
 func main() {
 
 	numFloors := 4
+	nextFloor :=  0
 
 	elevio.Init("localhost:15657", numFloors)
 
@@ -24,16 +41,31 @@ func main() {
 
 	for {
 		select {
-		case a := <-drv_buttons:
+		case a := <-drv_buttons:			//Receive buttonpress
 			fmt.Printf("%+v\n", a)
-			elevio.SetButtonLamp(a.Button, a.Floor, true)
+			if a.Button != 2 {			// If not Cab call
+				costFunction(a.Floor, d)	//Calculate cost function and broadcast order
+				//Receive cost function results
+				//if self, AddToQueue and AddToWatchdog
+				//else, AddToWatchdog
+			} else {
+				nextFloor = a.Floor		//AddToQueue instead
+				//AddToWatchdog
+			}
+			
+			elevio.SetButtonLamp(a.Button, a.Floor, true)	//Set lamp after order is sent to watchdog
 
-		case a := <-drv_floors:
+		case a := <-drv_floors:		//Receive current floor
 			fmt.Printf("%+v\n", a)
-			if a == numFloors-1 {
+			if a > nextFloor {
 				d = elevio.MD_Down
-			} else if a == 0 {
+			} else if a < nextFloor {
 				d = elevio.MD_Up
+			} else if a == nextFloor {	//else?
+				d = elevio.MD_Stop
+				elevio.SetDoorOpenLamp(true)
+				elevio.SetButtonLamp(a.Button, a.Floor, false)
+				time.Sleep(5* time.Seconds)	//Wait 5 s. Maybe not here?
 			}
 			elevio.SetMotorDirection(d)
 
