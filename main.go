@@ -1,12 +1,13 @@
 package main
 
-import "./driver-go-master/elevio"
+import "./driverModule/elevio"
+import "./queueModule"
 import "fmt"
 
 func main() {
 
 	numFloors := 4
-
+	queue.fillQueue()
 	elevio.Init("localhost:15657", numFloors)
 
 	var d elevio.MotorDirection = elevio.MD_Up
@@ -27,7 +28,7 @@ func main() {
 		case a := <-drv_buttons:
 			fmt.Printf("%+v\n", a)
 			elevio.SetButtonLamp(a.Button, a.Floor, true)
-
+			queue.addHallCall(a.Floor, a.Button)
 		case a := <-drv_floors:
 			fmt.Printf("%+v\n", a)
 			if a == numFloors-1 {
@@ -35,6 +36,11 @@ func main() {
 			} else if a == 0 {
 				d = elevio.MD_Up
 			}
+			if queue.checkStop(a, d){
+				elevio.SetMotorDirection(elevio.MD_Stop)
+				time.sleep(3000*time.Millisecond)
+			}
+			queue.removeOrder(a, d)
 			elevio.SetMotorDirection(d)
 
 		case a := <-drv_obstr:
