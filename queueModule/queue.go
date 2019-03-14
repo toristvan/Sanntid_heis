@@ -1,7 +1,9 @@
 package queue
 
-import "./../driverModule/elevio"
-
+import (
+	"./../driverModule/elevio"
+	"fmt"
+	)
 
 
 
@@ -10,72 +12,72 @@ const _queueSize int = 10
 // maybe add floorstop array
 type OrderStruct struct
 {
-	dir elevio.ButtonType
-	floor int
+	Dir elevio.ButtonType
+	Floor int
 }
 
 
 // flytte til main?
-var orderQueue [_queueSize]OrderStruct
-func fillQueue(){
+var OrderQueue [_queueSize]OrderStruct
+func InitQueue(){
 	var invalidOrder OrderStruct
-	invalidOrder.dir = 0
-	invalidOrder.floor = -1
+	invalidOrder.Dir = 0
+	invalidOrder.Floor = -1
 	for i := 0; i< _queueSize; i++{
-		orderQueue[i] = invalidOrder
+		OrderQueue[i] = invalidOrder
 	}
 }
-//var orderQueue := make([] ,_queueSize )
+//var OrderQueue := make([] ,_queueSize )
 
-func addHallCall(floor int, dir elevio.ButtonType){
+func AddHallCall(floor int, dir elevio.ButtonType){
 	var order OrderStruct
-	order.dir = dir
-	order.floor = floor
+	order.Dir = dir
+	order.Floor = floor
 	for i := 0; i< _queueSize; i++{
-		if orderQueue[i].floor != -1{
-			orderQueue[i] = order
+		if OrderQueue[i].Floor == -1{
+			OrderQueue[i] = order
 			break
 		}
 	}
+	fmt.Printf("Order added: %+v\n Order queue: %+v\n", order, OrderQueue)
 }
 
-func addCabCall(floor int){
+func AddCabCall(floor int){
 	var order OrderStruct
-	order.dir = elevio.MD_Stop
-	order.floor = floor
+	order.Dir = elevio.MD_Stop
+	order.Floor = floor
 	for i := 0; i< _queueSize; i++{
-		if orderQueue[i].floor != -1{
-			orderQueue[i] = order
+		if OrderQueue[i].Floor == -1{
+			OrderQueue[i] = order
 			break
 		}
 	}	
 }
 
 func RemoveOrder(floor int, dir elevio.MotorDirection){
-	var but elevio.ButtonType
-	if dir == elevio.MD_Up{
-		but = elevio.BT_HallUp
-	} else if dir == elevio.MD_Stop{
-		but = elevio.BT_Cab
-	} else if dir == elevio.MD_Down{
-		but = elevio.BT_HallDown
-	}
-	for i := 0; i< _queueSize; i++{
-		if orderQueue[i].floor == floor && (orderQueue[i].dir == but|| orderQueue[i].dir == elevio.BT_Cab) {
-			orderQueue[i].floor = -1
+	//Sletter alle ordre med oppgitt etasje i.
+	//Kan evt bare slette dem med gitt retning, men er det vits?
+	for i := 0; i< _queueSize-2; i++{
+		if OrderQueue[i].Floor == floor { //&& (OrderQueue[i].Dir == btn|| OrderQueue[i].Dir == elevio.BT_Cab) {
+			OrderQueue[i] = OrderQueue[i+1]
 		}
 	}
+
+	OrderQueue[_queueSize-1].Floor = -1
+	OrderQueue[_queueSize-1].Dir = 0
+
+	fmt.Printf("Order removed. \n New order queue: %+v\n", OrderQueue)
 }
 
 
 func CheckStop(floor int, dir elevio.MotorDirection) bool{	
-	var but elevio.ButtonType
+	var btn elevio.ButtonType
 	if dir == elevio.MD_Up{
-		but = elevio.BT_HallUp
+		btn = elevio.BT_HallUp
 	} else if dir == elevio.MD_Stop{
-		but = elevio.BT_Cab
+		btn = elevio.BT_Cab
 	} else if dir == elevio.MD_Down{
-		but = elevio.BT_HallDown
+		btn = elevio.BT_HallDown
 	}
-	return orderQueue[0].floor == floor && (orderQueue[0].dir == but || orderQueue[0].dir == elevio.BT_Cab) 
+	return OrderQueue[0].Floor == floor && (OrderQueue[0].Dir == btn || OrderQueue[0].Dir == elevio.BT_Cab) 
 }
