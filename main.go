@@ -21,12 +21,11 @@ func costFunction(newFloor int, currentFloor int, dir elevio.MotorDirection ) in
 	return cost
 }
 
-
 func main() {
 
 	numFloors := 4
-	//queue.fillQueue()
-	nextFloor :=  0
+	queue.InitQueue()
+	queue.OrderQueue[1].Floor =  0
 	currentFloor := 0
 
 	elevio.Init("localhost:15657", numFloors)
@@ -43,6 +42,7 @@ func main() {
 	go elevio.PollFloorSensor(drv_floors)
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
+	//go RunElevator()
 
 	for {
 		select {
@@ -53,11 +53,10 @@ func main() {
 			if a.Button != 2 {			// If not Cab call
 				costFunction(a.Floor, currentFloor, d)	//Calculate cost function and broadcast order
 				//Receive cost function results
-				queue.addHallCall(a.Floor, a.ButtonType) //if self, AddToQueue and AddToWatchdog
+				queue.AddHallCall(a.Floor, a.Button) //if self, AddToQueue and AddToWatchdog
 				//else, AddToWatchdog
 			} else {
-				//nextFloor = a.Floor		//AddToQueue instead
-				queue.addCabCall(a.Floor)
+				queue.AddCabCall(a.Floor)
 				//AddToWatchdog
 			}
 			
@@ -66,23 +65,22 @@ func main() {
 		case a := <-drv_floors:		//Receive current floor
 			fmt.Printf("%+v\n", a)
 			currentFloor = a
-			if a > nextFloor {
+			if a > queue.OrderQueue[1].Floor {
 				d = elevio.MD_Down
-			} else if a < nextFloor {
+			} else if a < queue.OrderQueue[1].Floor {
 				d = elevio.MD_Up
-			} else if a == nextFloor {	//else?
+			} else if a == queue.OrderQueue[1].Floor {	//else?
 				d = elevio.MD_Stop
+				elevio.SetMotorDirection(d)
 				elevio.SetDoorOpenLamp(true)
 				for i := 0 ; i<3 ; i++ {
 					elevio.SetButtonLamp(elevio.ButtonType(i), currentFloor, false)	
 				}
-				elevio.SetMotorDirection(elevio.MD_Stop)
 				time.Sleep(3* time.Second)	//Wait 5 s. Maybe not here?
 				elevio.SetDoorOpenLamp(false)
 				queue.RemoveOrder(a, d)
 			}
 			//if queue.CheckStop(a, d){
-			//	
 			//	time.Sleep(3000*time.Millisecond)
 			//}
 
@@ -107,4 +105,3 @@ func main() {
 		}
 	}
 }
-
