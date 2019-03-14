@@ -1,16 +1,18 @@
 package main
 
-import "./driverModule/elevio"
-import "./queueModule"
-import "fmt"
+import (
+	"./driverModule/elevio"
+	"./queueModule"
+	"fmt"
+	"time"
+	)
 
-
-func costFunction(newFloor int, dir int ) { // IN: currentFloor, Direction, (Queues?) , OUT: Cost
+func costFunction(newFloor int, currentFloor int, dir elevio.MotorDirection ) int { // IN: currentFloor, Direction, (Queues?) , OUT: Cost
 	floorDiff := (newFloor - currentFloor)
 	cost := floorDiff
-	if floorDiff*dir > 0 && dir != 0 {
+	if floorDiff*int(dir) > 0 && dir != 0 {
 		cost = floorDiff - 1
-	} else if floorDiff*dir < 0 && dir != 0 {
+	} else if floorDiff*int(dir) < 0 && dir != 0 {
 		cost = floorDiff + 1
 	} else {
 		cost = floorDiff
@@ -19,11 +21,13 @@ func costFunction(newFloor int, dir int ) { // IN: currentFloor, Direction, (Que
 	return cost
 }
 
+
 func main() {
 
 	numFloors := 4
 	//queue.fillQueue()
 	nextFloor :=  0
+	currentFloor := 0
 
 	elevio.Init("localhost:15657", numFloors)
 
@@ -45,15 +49,15 @@ func main() {
 		case a := <-drv_buttons:			//Receive buttonpress
 			fmt.Printf("%+v\n", a)
 			elevio.SetButtonLamp(a.Button, a.Floor, true)
-			//queue.addHallCall(a.Floor, a.Button)
-		case a := <-drv_floors:
+
 			if a.Button != 2 {			// If not Cab call
-				costFunction(a.Floor, d)	//Calculate cost function and broadcast order
+				costFunction(a.Floor, currentFloor, d)	//Calculate cost function and broadcast order
 				//Receive cost function results
-				//if self, AddToQueue and AddToWatchdog
+				queue.addHallCall(a.Floor, a.ButtonType) //if self, AddToQueue and AddToWatchdog
 				//else, AddToWatchdog
 			} else {
-				nextFloor = a.Floor		//AddToQueue instead
+				//nextFloor = a.Floor		//AddToQueue instead
+				queue.addCabCall(a.Floor)
 				//AddToWatchdog
 			}
 			
@@ -61,6 +65,7 @@ func main() {
 
 		case a := <-drv_floors:		//Receive current floor
 			fmt.Printf("%+v\n", a)
+			currentFloor = a
 			if a > nextFloor {
 				d = elevio.MD_Down
 			} else if a < nextFloor {
@@ -68,14 +73,19 @@ func main() {
 			} else if a == nextFloor {	//else?
 				d = elevio.MD_Stop
 				elevio.SetDoorOpenLamp(true)
-				elevio.SetButtonLamp(a.Button, a.Floor, false)
-				time.Sleep(5* time.Seconds)	//Wait 5 s. Maybe not here?
-			}
-			if queue.checkStop(a, d){
+				for i := 0 ; i<3 ; i++ {
+					elevio.SetButtonLamp(elevio.ButtonType(i), currentFloor, false)	
+				}
 				elevio.SetMotorDirection(elevio.MD_Stop)
-				time.sleep(3000*time.Millisecond)
+				time.Sleep(3* time.Second)	//Wait 5 s. Maybe not here?
+				elevio.SetDoorOpenLamp(false)
+				queue.RemoveOrder(a, d)
 			}
-			queue.removeOrder(a, d)
+			//if queue.CheckStop(a, d){
+			//	
+			//	time.Sleep(3000*time.Millisecond)
+			//}
+
 			elevio.SetMotorDirection(d)
 
 		case a := <-drv_obstr:
@@ -88,6 +98,7 @@ func main() {
 
 		case a := <-drv_stop:
 			fmt.Printf("%+v\n", a)
+			elevio.SetDoorOpenLamp(false)                 //Midlertidig?
 			for f := 0; f < numFloors; f++ {
 				for b := elevio.ButtonType(0); b < 3; b++ {
 					elevio.SetButtonLamp(b, f, false)
@@ -96,3 +107,4 @@ func main() {
 		}
 	}
 }
+
