@@ -8,7 +8,7 @@ import "./../driverModule/elevio"
 const _queueSize int = 10
 // dir BT_Cab signalizises cab call
 // maybe add floorstop array
-type orderStruct struct
+type OrderStruct struct
 {
 	dir elevio.ButtonType
 	floor int
@@ -16,9 +16,9 @@ type orderStruct struct
 
 
 // flytte til main?
-var orderQueue [_queueSize]orderStruct
+var orderQueue [_queueSize]OrderStruct
 func fillQueue(){
-	var invalidOrder orderStruct
+	var invalidOrder OrderStruct
 	invalidOrder.dir = 0
 	invalidOrder.floor = -1
 	for i := 0; i< _queueSize; i++{
@@ -28,7 +28,7 @@ func fillQueue(){
 //var orderQueue := make([] ,_queueSize )
 
 func addHallCall(floor int, dir elevio.ButtonType){
-	var order orderStruct
+	var order OrderStruct
 	order.dir = dir
 	order.floor = floor
 	for i := 0; i< _queueSize; i++{
@@ -40,7 +40,7 @@ func addHallCall(floor int, dir elevio.ButtonType){
 }
 
 func addCabCall(floor int){
-	var order orderStruct
+	var order OrderStruct
 	order.dir = elevio.MD_Stop
 	order.floor = floor
 	for i := 0; i< _queueSize; i++{
@@ -51,7 +51,7 @@ func addCabCall(floor int){
 	}	
 }
 
-func removerOrder(floor int, dir elevio.MotorDirection){
+func RemoveOrder(floor int, dir elevio.MotorDirection){
 	var but elevio.ButtonType
 	if dir == elevio.MD_Up{
 		but = elevio.BT_HallUp
@@ -68,7 +68,7 @@ func removerOrder(floor int, dir elevio.MotorDirection){
 }
 
 
-func checkStop(floor int, dir elevio.MotorDirection) bool{	
+func CheckStop(floor int, dir elevio.MotorDirection) bool{	
 	var but elevio.ButtonType
 	if dir == elevio.MD_Up{
 		but = elevio.BT_HallUp
