@@ -2,102 +2,78 @@ package main
 
 import (
 	"./driverModule/elevio"
+	"./networkModule/bcast"
 	"./queueModule"
 	"fmt"
 	"time"
 	)
 
-func costFunction(newFloor int, currentFloor int, dir elevio.MotorDirection ) int { // IN: currentFloor, Direction, (Queues?) , OUT: Cost
-	floorDiff := (newFloor - currentFloor)
-	cost := floorDiff
-	if floorDiff*int(dir) > 0 && dir != 0 {
-		cost = floorDiff - 1
-	} else if floorDiff*int(dir) < 0 && dir != 0 {
-		cost = floorDiff + 1
-	} else {
-		cost = floorDiff
-	}
-	//Broadcast result with ID
-	return cost
-}
+const localID = 0	//ID should be decided manually upon initialization
 
 func main() {
 
-	numFloors := 4
 	queue.InitQueue()
-	queue.OrderQueue[1].Floor =  0
-	currentFloor := 0
+	current_floor := 0
 
-	elevio.Init("localhost:15657", numFloors)
+	elevio.Init("localhost:15657") //, num_floors)
 
-	var d elevio.MotorDirection = elevio.MD_Up
-	elevio.SetMotorDirection(d)
+	var dir elevio.MotorDirection = elevio.MD_Up
+	elevio.SetMotorDirection(dir)
 
 	drv_buttons := make(chan elevio.ButtonEvent)
 	drv_floors := make(chan int)
 	drv_obstr := make(chan bool)
 	drv_stop := make(chan bool)
+	transmit_order := make(chan queue.OrderStruct)
+	receive_order := make(chan queue.OrderStruct)
 
 	go elevio.PollButtons(drv_buttons)
 	go elevio.PollFloorSensor(drv_floors)
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
+	go bcast.Transmitter(16569,transmit_order)
+	go bcast.Receiver(16569, receive_order)
 	//go RunElevator()
 
 	for {
 		select {
-		case a := <-drv_buttons:			//Receive buttonpress
-			fmt.Printf("%+v\n", a)
-			elevio.SetButtonLamp(a.Button, a.Floor, true)
-
-			if a.Button != elevio.BT_Cab {			// If not Cab call
-				costFunction(a.Floor, currentFloor, d)	//Calculate cost function and broadcast order
-				//Receive cost function results
-				queue.AddHallCall(a.Floor, a.Button) //if self, AddToQueue and AddToWatchdog
-				//else, AddToWatchdog
-			} else {
-				queue.AddCabCall(a.Floor)
-				//AddToWatchdog
+		case btn := <-drv_buttons:			//Receive buttonpress
+			new_order = queue.CreateOrder(btn.Floor, btn.Button)    //ID of sender, if needed
+			transmit_order <- new_order
+			if new_order.btn == elevio.BT_Cab {
+				queue.AddOrder(btn, current_floor, localID)
 			}
-			
-			elevio.SetButtonLamp(a.Button, a.Floor, true)	//Set lamp after order is sent to watchdog
 
-		case a := <-drv_floors:		//Receive current floor
-			fmt.Printf("%+v\n", a)
-			currentFloor = a
-			if a > queue.OrderQueue[1].Floor {
-				d = elevio.MD_Down
-			} else if a < queue.OrderQueue[1].Floor {
-				d = elevio.MD_Up
-			} else if a == queue.OrderQueue[1].Floor {	//else?
-				d = elevio.MD_Stop
-				elevio.SetMotorDirection(d)
+		case flr := <-drv_floors:		//Receive current floor
+			fmt.Printf("%+v\n", flr)
+			if queue.CheckStop(flr, dir, localID){
+				dir = elevio.MD_Stop
+				elevio.SetMotorDirection(dir)
 				elevio.SetDoorOpenLamp(true)
 				for i := 0 ; i<3 ; i++ {
-					elevio.SetButtonLamp(elevio.ButtonType(i), currentFloor, false)	
+					elevio.SetButtonLamp(elevio.ButtonType(i), current_floor, false)	
 				}
 				time.Sleep(3* time.Second)	//Wait 5 s. Maybe not here?
 				elevio.SetDoorOpenLamp(false)
-				queue.RemoveOrder(a, d)
+				queue.RemoveOrder(flr, localID)
 			}
-			//if queue.CheckStop(a, d){
-			//	time.Sleep(3000*time.Millisecond)
-			//}
+			
+			
 
-			elevio.SetMotorDirection(d)
+			elevio.SetMotorDirection(dir)
 
-		case a := <-drv_obstr:
-			fmt.Printf("%+v\n", a)
-			if a {
+		case obstr := <-drv_obstr:
+			fmt.Printf("%+v\n", obstr)
+			if obstr {
 				elevio.SetMotorDirection(elevio.MD_Stop)
 			} else {
-				elevio.SetMotorDirection(d)
+				elevio.SetMotorDirection(dir)
 			}
 
-		case a := <-drv_stop:
-			fmt.Printf("%+v\n", a)
+		case stop := <-drv_stop:
+			fmt.Printf("%+v\n", stop)
 			elevio.SetDoorOpenLamp(false)                 //Midlertidig?
-			for f := 0; f < numFloors; f++ {
+			for f := 0; f < elevio.Num_floors; f++ {
 				for b := elevio.ButtonType(0); b < 3; b++ {
 					elevio.SetButtonLamp(b, f, false)
 				}
