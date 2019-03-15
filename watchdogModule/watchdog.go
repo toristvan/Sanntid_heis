@@ -1,45 +1,57 @@
-package main
+package watchdog
 
 import(
+  "./../queueModule"
+  "./../networkModule/bcast"
   ."fmt"
   "time"
-)
+  )
 
-type Watchdogtimer struct {
+/*
+type WatchdogTimer struct {
   startTime     time.Time
   timeNow       time.Duration
   timeoutLength time.Duration
 }
 
-func NewWatchdog() Watchdogtimer {
-	wtd := new(Watchdogtimer)
+func NewWatchdog() WatchdogTimer {
+	wtd := new(WatchdogTimer)
 	return *wtd
 }
 
-func (wtd *Watchdogtimer) initWatchdog(timeOutInterval time.Duration) {
+func (wtd *WatchdogTimer) initWatchdog(timeOutInterval time.Duration) {
   wtd.startTime     = time.Now()
   wtd.timeoutLength = timeOutInterval
 }
 
-func (wtd *Watchdogtimer) resetWatchdog() {
+func (wtd *WatchdogTimer) resetWatchdog() {
   wtd.startTime = time.Now()
 }
 
-func (wtd *Watchdogtimer) updateWatchdog() {
-  wtd.timeNow = time.Since(wtd.startTime)
-  Println("time now:", wtd.timeNow)
-  if wtd.timeNow > wtd.timeoutLength {
-    Println("timeout")
-  }
+
+func (wtd *WatchdogTimer) timeOut() bool{
+  return time.Since(wtd.startTime)>wtd.timeoutLength
+}
+*/
+func timeout (order *orderStruct) bool{
+  return time.Since(order.startTime)>length;
 }
 
-func main(){
-  a := NewWatchdog()
-  a.initWatchdog(10 * time.Second)
+func Watchdog(retransmit chan<- queue.OrderStruct, numElevs int, queueSize int){
+  //a := NewWatchdog()
+  //a.initWatchdog(10 * time.Second)
 
   for{
-    time.Sleep(1 * time.Second)
-    a.updateWatchdog()
-    a.resetWatchdog()
+    time.Sleep(5 * time.Second)
+    //a.updateWatchdog()
+    //a.resetWatchdog()
+    for j := 0; j< numElevs; j++{
+      for i := 0; i< queueSize; i++{
+        if timeout(queue.OrderQueue[j][i]) {
+          retransmit <- queue.OrderQueue[j][i]
+        }
+      }
+    }
+    
   }
 }
