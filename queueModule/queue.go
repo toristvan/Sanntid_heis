@@ -8,6 +8,7 @@ import (
 
 
 const _queueSize int = 10
+const _N_elevs int = 3
 // dir BT_Cab signalizises cab call
 // maybe add floorstop array
 type OrderStruct struct
@@ -18,13 +19,15 @@ type OrderStruct struct
 
 
 // flytte til main?
-var OrderQueue [_queueSize]OrderStruct
+var OrderQueue [_N_elevs][_queueSize] OrderStruct
 func InitQueue(){
 	var invalidOrder OrderStruct
 	invalidOrder.Dir = 0
 	invalidOrder.Floor = -1
-	for i := 0; i< _queueSize; i++{
-		OrderQueue[i] = invalidOrder
+	for j := 0; j<_N_elevs; j++{
+		for i := 0; i< _queueSize; i++{
+			OrderQueue[j][i] = invalidOrder
+		}
 	}
 }
 //var OrderQueue := make([] ,_queueSize )

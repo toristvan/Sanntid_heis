@@ -50,7 +50,7 @@ func main() {
 			fmt.Printf("%+v\n", a)
 			elevio.SetButtonLamp(a.Button, a.Floor, true)
 
-			if a.Button != 2 {			// If not Cab call
+			if a.Button != elevio.BT_Cab {			// If not Cab call
 				costFunction(a.Floor, currentFloor, d)	//Calculate cost function and broadcast order
 				//Receive cost function results
 				queue.AddHallCall(a.Floor, a.Button) //if self, AddToQueue and AddToWatchdog
