@@ -46,6 +46,12 @@ func Init(addr string) { //numFloors int) {
 		panic(err.Error())
 	}
 	_initialized = true
+
+	for i := 0; i < 3; i++ {
+		for j := 0; j < Num_floors; j++ {
+			SetButtonLamp(ButtonType(i), j, false)	
+		}
+	}
 }
 
 func SetMotorDirection(dir MotorDirection) {
