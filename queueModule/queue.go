@@ -53,7 +53,11 @@ func costFunction(newFloor int, currentFloor int, dir elevio.MotorDirection ) in
 
 func addToQueue(order OrderStruct, id int) {
 	fmt.Printf("%+v\n", order)
+<<<<<<< HEAD
+
+=======
 	
+>>>>>>> 06afbbbcb96b17b8ee06d1e7857ac7420e50c7ef
 	for i := 0; i< queue_size; i++{
 		if orderQueue[id][i].Floor == -1 {
 			orderQueue[id][i] = order
@@ -77,7 +81,11 @@ func CreateOrder(floor int, btn elevio.ButtonType) OrderStruct{
 func RemoveOrder(floor int, id int){
 	//Sletter alle ordre med oppgitt etasje i.
 	//Kan evt bare slette dem med gitt retning, men er det vits?
+<<<<<<< HEAD
+	var prev OrderStruct
+=======
 	var prev orderStruct
+>>>>>>> 06afbbbcb96b17b8ee06d1e7857ac7420e50c7ef
 
 	orderQueue[id][0].Floor = -1
 	orderQueue[id][0].Button = 0
@@ -93,7 +101,11 @@ func RemoveOrder(floor int, id int){
 }
 
 /*
+<<<<<<< HEAD
+func CheckStop(floor int, dir elevio.MotorDirection, id int) bool{
+=======
 func CheckStop(floor int, dir elevio.MotorDirection, id int) bool{	
+>>>>>>> 06afbbbcb96b17b8ee06d1e7857ac7420e50c7ef
 	var btn elevio.ButtonType
 	if dir == elevio.MD_Up{
 		btn = elevio.BT_HallUp
@@ -102,7 +114,56 @@ func CheckStop(floor int, dir elevio.MotorDirection, id int) bool{
 	} else if dir == elevio.MD_Down{
 		btn = elevio.BT_HallDown
 	}
+<<<<<<< HEAD
+	return orderQueue[id][0].floor == floor && (orderQueue[id][0].Button == btn || orderQueue[id][0].Button == elevio.BT_Cab)
+}
+*/
+
+func Queue(order_chan chan<- OrderStruct) {//In channels: drv_buttons (add order) , floor reached (remove order) , costfunction. Out : push Order
+	InitQueue()
+	var prev_local_order OrderStruct
+
+	drv_buttons := make(chan elevio.ButtonEvent)
+	defer close(drv_buttons)
+	//broadcast_costrequest := make(chan )
+
+	go elevio.PollButtons(drv_buttons)
+
+	//go bcast.OrderAssigning(broadcast_costrequest, order_assigned)
+	//go bcast.OrderReceiver()
+
+	for {
+		select{
+		case button_input := <- drv_buttons:   //Button input from elevator
+			var new_order OrderStruct
+
+			new_order.Button = button_input.Button
+			new_order.Floor = button_input.Floor
+
+			fmt.Printf("Button input: %+v , Floor: %+v\n", new_order.Button, new_order.Floor)
+
+			//Add to watchdog?
+			//if new_order.button
+			//broadcast_costrequest <- new_order
+			//else cabcall
+			//broadcast_cabcall
+			//addToQueue(new_order, localID)
+
+			//Unnecessary below?
+			//assignedorder <- order_assigned
+			addToQueue(new_order, localID)
+
+        //case orderreceived
+		default:
+			if orderQueue[localID][0] != prev_local_order && orderQueue[localID][0].Floor != -1 {
+				prev_local_order = orderQueue[localID][0]
+				order_chan <- orderQueue[localID][0]
+			}
+		}
+	}
+=======
 	return orderQueue[id][0].floor == floor && (orderQueue[id][0].Button == btn || orderQueue[id][0].Button == elevio.BT_Cab) 
+>>>>>>> 06afbbbcb96b17b8ee06d1e7857ac7420e50c7ef
 }
 */
 
