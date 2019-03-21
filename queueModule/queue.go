@@ -74,7 +74,6 @@ func insertToQueue(order OrderStruct, index int, id int){
 
 func addToQueue(order OrderStruct, current_dir ElevStateType ,id int) {          //ElevStateType must be elecatorClient package
 	fmt.Printf("%+v\n", order)
-
 	if orderQueue[id][0].Floor == -1{
 		insertToQueue(order, 0, id)
 	} else if currentDir == GoingUp {
