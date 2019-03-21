@@ -4,24 +4,24 @@ import (
     "./driverModule/elevio"
     "./queueModule"
     ."fmt"
-	  "time"
+    "time"
 )
 
 type ElevStateType int
 const (
-	idle 				  ElevStateType = 0
-	goingUp 			ElevStateType = 1
-	goingDown 		ElevStateType = 2
-	atFloor 			ElevStateType = 4
+	idle 		ElevStateType = 0
+	goingUp 	ElevStateType = 1
+	goingDown 	ElevStateType = 2
+	atFloor 	ElevStateType = 4
 )
 type elevCommand int
 const (
-	newOrder 			 elevCommand = 0
-	goUp		 		   elevCommand = 1
-	goDown 	 			 elevCommand = 2
-	floorReached 	 elevCommand = 3
-	finished 			 elevCommand = 4
-  wait            elevCommand = 5
+	newOrder 	elevCommand = 0
+	goUp		elevCommand = 1
+	goDown 	 	elevCommand = 2
+	floorReached 	elevCommand = 3
+	finished 	elevCommand = 4
+  	wait            elevCommand = 5
 )
 type status int
 const (
