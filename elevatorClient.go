@@ -118,16 +118,15 @@ func main(){
     //defer close(order_chan)
 
     elevio.Init("localhost:15657")
-	  elev_state = idle
-	  current_floor = elevio.Num_floors + 1
+    elev_state = idle
+    current_floor = elevio.Num_floors + 1
     Println("Ready")
-	  Println("Ready")
-	  Println("Current floor:", current_floor)
+    Println("Current floor:", current_floor)
 
     go elevio.PollFloorSensor(drv_floors)
     go elevio.PollObstructionSwitch(drv_obstr)
-	  go elevio.PollStopButton(drv_stop)
-	  go queue.Queue(order_chan)
+    go elevio.PollStopButton(drv_stop)
+    go queue.Queue(order_chan)
 
 
     for {
