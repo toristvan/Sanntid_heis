@@ -10,10 +10,11 @@ import (
 type ElevStateType int
 const (
 	idle 				ElevStateType = 0
-	goingUp 			ElevStateType = 1
-	goingDown 			ElevStateType = 2
+	GoingUp 			ElevStateType = 1
+	GoingDown 			ElevStateType = 2
 	atFloor 			ElevStateType = 4
 )
+
 type elevCommand int
 const (
 	newOrder 			elevCommand = 0

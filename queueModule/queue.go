@@ -12,14 +12,28 @@ const localID int = 0
 
 // type BT_Cab signalizises cab call
 // maybe add floorstop array
+type OrderCommand int 
+
+const (
+	CostReq 	OrderCommand = 0
+	CostSend 	OrderCommand = 1
+	OrdrAssign 	OrderCommand = 2
+	OrdrAdd 	OrderCommand = 3
+	OrdrConf 	OrderCommand = 4
+)
+
 type OrderStruct struct
 {
 	Button elevio.ButtonType
 	Floor int
 	timestamp time.Time
+	ElevID int
+	Cost int
+	Cmd OrderCommand
+
 }
 
-// flytte til main?
+
 var orderQueue [num_elevs][queue_size] OrderStruct
 
 
@@ -51,15 +65,35 @@ func costFunction(newFloor int, currentFloor int, dir elevio.MotorDirection ) in
 	return cost
 }
 
-func addToQueue(order OrderStruct, id int) {
+func insertToQueue(order OrderStruct, index int, id int){
+	for i := queue_size - 1; i > index; i--{
+		orderQueue[id][i] = orderQueue[id][i-1]
+	}
+	orderQueue[id][index] = order
+}
+
+func addToQueue(order OrderStruct, current_dir ElevStateType ,id int) {          //ElevStateType must be elecatorClient package
 	fmt.Printf("%+v\n", order)
-	
-	for i := 0; i< queue_size; i++{
-		if orderQueue[id][i].Floor == -1 {
-			orderQueue[id][i] = order
-			break
+
+	if orderQueue[id][0].Floor == -1{
+		insertToQueue(order, 0, id)
+	} else if currentDir == GoingUp {
+		if order.Floor < orderQueue[id][0].Floor {
+			insertToQueue(order, 0, id)
+		}
+	} else if currentDir == GoingDown {
+		if order.Floor > orderQueue[id][0].Floor {
+			insertToQueue(order, 0, id)
+		}
+	} else {
+		for i := 0; i < queue_size; i++{
+			if orderQueue[id][i].Floor == -1 {
+				orderQueue[id][i] = order
+				break
+			}
 		}
 	}
+
 	fmt.Printf("Order added. Current queue: %+v\n", orderQueue)
 }
 
@@ -77,34 +111,32 @@ func CreateOrder(floor int, btn elevio.ButtonType) OrderStruct{
 func RemoveOrder(floor int, id int){
 	//Sletter alle ordre med oppgitt etasje i.
 	//Kan evt bare slette dem med gitt retning, men er det vits?
-	var prev orderStruct
+	var prev OrderStruct
 
 	orderQueue[id][0].Floor = -1
 	orderQueue[id][0].Button = 0
 
-	for i := 1; i < queue_size ; i++ {
-		orderQueue[id][i] = prev
+	for i := 0; i < queue_size-2 ; i++ {
+		prev = orderQueue[id][i]
+		orderQueue[id][i] = orderQueue[id][i+1]
+		orderQueue[id][i+1] = prev
 	}
-
-	orderQueue[id][queue_size-1].Floor = -1
-	orderQueue[id][queue_size-1].Button = 0
 
 	fmt.Printf("Order removed. \n New order queue: %+v\n", orderQueue)
 }
 
-/*
-func CheckStop(floor int, dir elevio.MotorDirection, id int) bool{	
-	var btn elevio.ButtonType
-	if dir == elevio.MD_Up{
-		btn = elevio.BT_HallUp
-	} else if dir == elevio.MD_Stop{
-		btn = elevio.BT_Cab
-	} else if dir == elevio.MD_Down{
-		btn = elevio.BT_HallDown
+
+func checkIfInQueue(order OrderStruct) bool{
+	for i := 0; i < num_elevs; i++ {
+		for j := 0; j < queue_size; j++ {
+			if order.Floor == orderQueue[i][j].Floor && order.Button == orderQueue[i][j].Button {
+				return true
+			}
+		}
 	}
-	return orderQueue[id][0].floor == floor && (orderQueue[id][0].Button == btn || orderQueue[id][0].Button == elevio.BT_Cab) 
+	return false
 }
-*/
+
 
 func Queue(order_chan chan<- OrderStruct) {//In channels: drv_buttons (add order) , floor reached (remove order) , costfunction. Out : push Order
 	InitQueue()
@@ -128,7 +160,9 @@ func Queue(order_chan chan<- OrderStruct) {//In channels: drv_buttons (add order
 			new_order.Floor = button_input.Floor
 
 			fmt.Printf("Button input: %+v , Floor: %+v\n", new_order.Button, new_order.Floor)
-			
+			if !checkIfInQueue(){
+				addToQueue(new_order, localID)
+			}
 			//Add to watchdog?
 			//if new_order.button
 			//broadcast_costrequest <- new_order
@@ -138,7 +172,6 @@ func Queue(order_chan chan<- OrderStruct) {//In channels: drv_buttons (add order
 
 			//Unnecessary below?
 			//assignedorder <- order_assigned
-			addToQueue(new_order, localID)
 
         //case orderreceived
 		default:
