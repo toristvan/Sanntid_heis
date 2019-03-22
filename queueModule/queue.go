@@ -1,15 +1,18 @@
 package queue
 
 import (
-	"./../networkModule/bcast"
+	//"./../networkModule/bcast"
 	"./../driverModule/elevio"
+	//."./../fsmModule"
 	"fmt"
-	"time"
+	//"time"
 	)
 
 const num_elevs int = 1
 const queue_size int = (elevio.Num_floors*3)-2
 const localID int = 0
+
+
 
 
 var orderQueue [num_elevs][queue_size] OrderStruct
@@ -50,7 +53,7 @@ func insertToQueue(order OrderStruct, index int, id int){
 	orderQueue[id][index] = order
 }
 
-func addToQueue(order OrderStruct, current_dir ElevStateType ,id int) {          //ElevStateType must be elecatorClient package
+func addToQueue(order OrderStruct, current_dir elevio.ElevStateType ,id int) {          //ElevStateType must be elecatorClient package
 	fmt.Printf("%+v\n", order)
 	if orderQueue[id][0].Floor == -1{
 		insertToQueue(order, 0, id)
@@ -103,7 +106,7 @@ func checkIfInQueue(order OrderStruct) bool{
 	return false
 }
 
-func DistributeOrder(start_order_chan <-chan queue.OrderStruct, add_order_chan chan<- queue.OrderStruct, local_id int){
+func DistributeOrder(start_order_chan <-chan OrderStruct, add_order_chan chan<- OrderStruct, local_id int){
 	var lowest_cost int = 10 //maxORder
 	var first_cost bool = true
 	var best_elev int =-1
@@ -119,23 +122,23 @@ func DistributeOrder(start_order_chan <-chan queue.OrderStruct, add_order_chan c
 	for{
 		select{
 		case new_order := <-start_order_chan:
-			select{
-			case new_order.Cmd == queue.CostReq:
-				new_order.cdm = queue.CostSend
+			if new_order.Cmd == CostReq{
+
+				new_order.Cmd = CostSend
 				master = true
 				trans_order <- new_order
 			}
 		case new_order := <-rec_order:
 			switch new_order.Cmd{
-			case queue.CostSend:
-				var cost int = queue.CostFunction(new_order)
+			case CostSend:
+				var cost int = costFunction(new_order)
 				new_order.ElevID = local_id
-				new_order.Cmd = queue.OrdrAssign
+				new_order.Cmd = OrdrAssign
 				trans_order <- new_order //transmit new order
-			case queue.OrdrAssign:
+			case OrdrAssign:
 				if master{
 					if first_cost{
-						ticker := time.Ticker(100*Millisecond)
+						ticker := time.Ticker(100*time.Millisecond)
 						first_cost = false
 					}
 					if new_order.Cost < lowest_cost{
@@ -145,7 +148,7 @@ func DistributeOrder(start_order_chan <-chan queue.OrderStruct, add_order_chan c
 					if ticker.c{
 						new_order.ElevID = best_elev
 						new_order.Cost = lowest_cost
-						new_order.Cmd = queue.OrdrAdd
+						new_order.Cmd = OrdrAdd
 						trans_order <- new_order //transmit new order
 						master = false
 						first_cost = true
@@ -153,13 +156,13 @@ func DistributeOrder(start_order_chan <-chan queue.OrderStruct, add_order_chan c
 						best_elev = -1
 					}
 				}
-			case queue.OrdrAdd:
+			case OrdrAdd:
 				if new_order.ElevID == local_id{
 					add_order_chan <- new_order //add order to queue
-					new_order.Cmd = queue.OrdrConf
+					new_order.Cmd = OrdrConf
 					trans_order <- new_order //transmit new order
 				}
-			case queue.OrdrConf:
+			case OrdrConf:
 				if new_order.ElevID != local_id{
 					add_order_chan <- new_order
 
@@ -182,7 +185,7 @@ func Queue(order_chan chan<- OrderStruct) {//In channels: drv_buttons (add order
 	go elevio.PollButtons(drv_buttons)
 
 	//maybe necessary to move to main
-	go bcast.DistributeOrder(start_order, add_to_queue, localID)
+	//go DistributeOrder(start_order, add_to_queue, localID)
 
 
 	//go bcast.OrderAssigning(broadcast_costrequest, order_assigned)
@@ -197,10 +200,10 @@ func Queue(order_chan chan<- OrderStruct) {//In channels: drv_buttons (add order
 			new_order.Button = button_input.Button
 			new_order.Floor = button_input.Floor
 			new_order.Cmd = CostReq
-			start_order<- := new_order
+			start_order <- new_order
 
 			fmt.Printf("Button input: %+v , Floor: %+v\n", new_order.Button, new_order.Floor)
-			if !checkIfInQueue(){
+			if !checkIfInQueue(new_order){
 				addToQueue(new_order, localID)
 			}
 		case order_to_add := <-add_to_queue:

@@ -1,5 +1,10 @@
 package queue
 
+import (
+	"./../driverModule/elevio"
+	"time"
+)
+
 type OrderCommand int 
 
 const (
@@ -10,13 +15,11 @@ const (
 	OrdrConf 	OrderCommand = 4
 )
 
-type OrderStruct struct
-{
+type OrderStruct struct {
 	Button elevio.ButtonType
 	Floor int
-	timestamp time.Time
+	Timestamp time.Time
 	ElevID int
 	Cost int
 	Cmd OrderCommand
-
 }
