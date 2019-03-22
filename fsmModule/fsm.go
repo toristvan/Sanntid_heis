@@ -11,10 +11,10 @@ import(
 
 type ElevStateType int
 const (
-	idle 				  ElevStateType = 0
-	goingUp 			ElevStateType = 1
-	goingDown 		ElevStateType = 2
-	atFloor 			ElevStateType = 4
+	Idle 				  ElevStateType = 0
+	GoingUp 			ElevStateType = 1
+	GoingDown 		ElevStateType = 2
+	AtFloor 			ElevStateType = 4
 )
 type ElevCommand int
 const (
@@ -39,7 +39,7 @@ func ElevatorInit() int {
   var current_floor int
 
   elevio.Init("localhost:15657")
-  elev_state = idle
+  elev_state = Idle
   current_floor = elevio.Num_floors + 1
   Println("Ready")
 
@@ -63,52 +63,52 @@ func ElevStateMachine(status_elev_state chan <- Status, sync_elev_state <- chan 
         }
 
         switch elev_state{
-        case idle:
-          Println("idle")
+        case Idle:
+          Println("Idle")
           elevio.SetDoorOpenLamp(false)
 
           switch new_command{
           case GoDown:
             status_elev_state <- Done
-            elev_state = goingDown
+            elev_state = GoingDown
           case GoUp:
             status_elev_state <- Done
-            elev_state = goingUp
+            elev_state = GoingUp
           case FloorReached:
             status_elev_state <- Done
-            elev_state = atFloor
+            elev_state = AtFloor
           case Wait:
-            elev_state = idle
+            elev_state = Idle
           }
 
-        case goingUp:
+        case GoingUp:
           if new_command == FloorReached{
             elevio.SetMotorDirection(elevio.MD_Stop)
             status_elev_state <- Done
-            elev_state = atFloor
+            elev_state = AtFloor
           } else{
             elevio.SetMotorDirection(elevio.MD_Up)
             time.Sleep(100 * time.Millisecond)
           }
 
-        case goingDown:
+        case GoingDown:
           if new_command == FloorReached{
             elevio.SetMotorDirection(elevio.MD_Stop)
             status_elev_state <- Done
-            elev_state = atFloor
+            elev_state = AtFloor
           } else {
             elevio.SetMotorDirection(elevio.MD_Down)
             time.Sleep(100 * time.Millisecond)
           }
 
-        case atFloor:
+        case AtFloor:
           elevio.SetDoorOpenLamp(true)
           elevio.SetButtonLamp(button, floor, false)
 
           Println("Floor reached")
 
           new_command = Wait
-          elev_state = idle
+          elev_state = Idle
           status_elev_state <- Done
         }
       }
