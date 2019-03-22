@@ -10,18 +10,42 @@ import (
 
 const localID = 1
 
+type executeOrderStruct struct{
+  active bool
+  Floor int
+  Button elevio.ButtonType
+}
+
+var executeOrderQueue[4] executeOrderStruct
+var index = 1
+
 func dummyCostFunc(hallCall elevio.ButtonType, floor int) int {
   return 1
 }
 
+
+func executeOrder(order_chan <-chan queue.OrderStruct, pending_orders chan<- executeOrderStruct){
+  select{
+  case new_order := <- order_chan:   //Input from queue
+
+      executeOrderQueue[index].Floor  = new_order.Floor
+      executeOrderQueue[index].Button = new_order.Button
+      executeOrderQueue[index].active = true
+
+      Println("executeOrderQueue", executeOrderQueue[new_order.Floor].Floor)
+      pending_orders <- executeOrderQueue[index]
+  }
+}
+
 func main(){
 
-    var current_order queue.OrderStruct
+    var current_order executeOrderStruct
     var current_floor int
 
     var elevEvent elevio.ButtonEvent
     next_floor := elevEvent.Floor
     order_type := elevEvent.Button
+
 
     new_command         := make(chan fsm.ElevCommand)
     status_elev_state   := make(chan fsm.Status)
@@ -34,7 +58,7 @@ func main(){
 
     order_chan     := make(chan queue.OrderStruct)
     input_queue    := make(chan queue.OrderStruct)
-    pending_orders := make(chan queue.OrderStruct, 5)
+    pending_orders := make(chan executeOrderStruct, 5)
 
     current_floor = fsm.ElevatorInit()
     queue.InitQueue()
@@ -49,11 +73,11 @@ func main(){
       go fsm.ElevStateMachine(status_elev_state, sync_elev_state, order_type, next_floor)
       go fsm.ElevInputCommand(new_command)
       go queue.Queue(input_queue, order_chan)
+      go executeOrder(order_chan, pending_orders)
 
       select {
       case button_input := <-drv_buttons:
         var new_order queue.OrderStruct
-
           //sende ordre til andre her
     		new_order.Button     = button_input.Button
     		new_order.Floor      = button_input.Floor
@@ -61,15 +85,10 @@ func main(){
         new_order.Timestamp  = time.Now()
     		input_queue <- new_order
 
-      case new_order := <- order_chan:   //Input from queue
-        Println("new_order")
-        if new_order.ElevID == localID{
-          pending_orders <- new_order
-        }
-
       case execute_order := <- pending_orders:
         next_floor    = execute_order.Floor
         order_type    = execute_order.Button
+
         current_order = execute_order
 
         //Add to watchdog here
