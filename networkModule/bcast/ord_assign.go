@@ -1,12 +1,12 @@
 package bcast
-
+/* Move to queue?
 import(
-	"./../../queueModule/queue"
+	"./../../queueModule"
 	"time"
 )
 
 
-func DistributeOrder(start_order_chan <-chan* queue.OrderStruct, add_order_chan chan*<- queue.OrderStruct){
+func DistributeOrder(start_order_chan <-chan* queue.OrderStruct, add_order_chan chan*<- queue.OrderStruct, local_id int){
 	var lowest_cost int = 10 //maxORder
 	var first_cost bool = true
 	var best_elev int =-1
@@ -32,7 +32,7 @@ func DistributeOrder(start_order_chan <-chan* queue.OrderStruct, add_order_chan 
 			switch new_order.Cmd{
 			case queue.CostSend:
 				var cost int = queue.CostFunction(new_order)
-				new_order.ElevID = LocalID
+				new_order.ElevID = local_id
 				new_order.Cmd = queue.OrdrAssign
 				trans_order <- new_order //transmit new order
 			case queue.OrdrAssign:
@@ -57,13 +57,13 @@ func DistributeOrder(start_order_chan <-chan* queue.OrderStruct, add_order_chan 
 					}
 				}
 			case queue.OrdrAdd:
-				if new_order.ElevID == LocalID{
+				if new_order.ElevID == local_id{
 					add_order_chan <- new_order //add order to queue
 					new_order.Cmd = queue.OrdrConf
 					trans_order <- new_order //transmit new order
 				}
 			case queue.OrdrConf:
-				if new_order.ElevID != LocalID{
+				if new_order.ElevID != local_id{
 					add_order_chan <- new_order
 
 				}
@@ -72,6 +72,6 @@ func DistributeOrder(start_order_chan <-chan* queue.OrderStruct, add_order_chan 
 	}
 }
 
-
+*/
 
 

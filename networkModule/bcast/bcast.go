@@ -2,13 +2,12 @@ package bcast
 
 import (
 	"../conn"
-	//"../localip" //added
 	"encoding/json"
 	"fmt"
 	"net"
 	"reflect"
 	"strings"
-	"time"
+	//"time"
 )
 
 // Encodes received values from `chans` into type-tagged JSON, then broadcasts

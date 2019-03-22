@@ -22,15 +22,15 @@ const (
 	goUp			elevCommand = 1
 	goDown 	 		elevCommand = 2
 	floorReached 	elevCommand = 3
-	finished 		elevCommand = 4
-  	wait            elevCommand = 5
+    finished 		elevCommand = 4
+    wait            elevCommand = 5
 )
 
 type status int
 const (
-  pending status = 0
-  active  status = 1
-  done    status = 2
+    pending status = 0
+    active  status = 1
+    done    status = 2
 )
 
 const localID = 0
