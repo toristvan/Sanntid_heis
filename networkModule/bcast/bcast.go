@@ -2,6 +2,7 @@ package bcast
 
 import (
 	"../conn"
+	"../localip" //added
 	"encoding/json"
 	"fmt"
 	"net"
@@ -30,7 +31,19 @@ func Transmitter(port int, chans ...interface{}) {
 	}
 
 	conn := conn.DialBroadcastUDP(port)
-	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
+	//prev code: addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
+	//new code start
+	addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
+	if err != nil{
+		var offlineIP string
+		offlineIP, err := localip.OfflineLocalIP()
+		if err != nil{
+			fmt.Prinln("Error: ", err)
+			return 
+		}
+		addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", offlineIP, port))
+	}
+	//new code end
 	for {
 		chosen, value, _ := reflect.Select(selectCases)
 		buf, _ := json.Marshal(value.Interface())
