@@ -37,6 +37,8 @@ func Transmitter(port int, chans ...interface{}) {
 		conn.WriteTo([]byte(typeNames[chosen]+string(buf)), addr)
 	}
 }
+//Add functionality to broadcast to self if not connected to internet
+
 
 // Matches type-tagged JSON received on `port` to element types of `chans`, then
 // sends the decoded value on the corresponding channel
