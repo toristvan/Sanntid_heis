@@ -142,32 +142,46 @@ func Queue(order_chan chan<- OrderStruct) {//In channels: drv_buttons (add order
 	var prev_local_order OrderStruct
 
 	drv_buttons := make(chan elevio.ButtonEvent)
+	add_to_queue := make(chan OrderStruct)
+	master_order := make (chan OrderStruct)
+	slave_order := make(chan OrderStruct)
 	defer close(drv_buttons)
 	//broadcast_costrequest := make(chan )
-
 	go elevio.PollButtons(drv_buttons)
+
+	//move to diff module?
+	go bcast.Receiver(slave_order)
+	go bcast.SlaveOrder(slave_order, add_to_queue)
+
+	go bcast.MasterOder(master_order)
 
 	//go bcast.OrderAssigning(broadcast_costrequest, order_assigned)
 	//go bcast.OrderReceiver()
 
 	for {
 		select{
-		case button_input := <- drv_buttons:   //Button input from elevator
+		case button_input := <-drv_buttons:   //Button input from elevator
+			//Move outside so it's not decalred multiple times?
 			var new_order OrderStruct
 
 			new_order.Button = button_input.Button
 			new_order.Floor = button_input.Floor
+			new_order.Cmd = CostReq
+			master_order<- := new_order
 
 			fmt.Printf("Button input: %+v , Floor: %+v\n", new_order.Button, new_order.Floor)
 			if !checkIfInQueue(){
 				addToQueue(new_order, localID)
 			}
+		case order_to_add := add_to_queue:
+			addToQueue(order_to_add, order_to_add.ElevID)
 			//Add to watchdog?
 			//if new_order.button
 			//broadcast_costrequest <- new_order
 			//else cabcall
 			//broadcast_cabcall
 			//addToQueue(new_order, localID)
+			//If queue added, set turnonlightchannels
 
 			//Unnecessary below?
 			//assignedorder <- order_assigned
