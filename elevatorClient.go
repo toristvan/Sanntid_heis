@@ -7,6 +7,18 @@ import (
     ."fmt"
 	  "time"
 )
+/*
+=========================== Bothause! ================================
+Denne fungerer med å bruke "Test queue" i queueModule
+
+// TODO:
+oppdater funksjonen queue i queueModule
+trenger input channel "input_queue" eller noe lignende
+
+
+queue.Queue(input_queue, order_chan)
+*/
+
 
 const localID = 1
 
