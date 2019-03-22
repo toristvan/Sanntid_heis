@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"./../networkModule/bcast"
 	"./../driverModule/elevio"
 	"fmt"
 	"time"
@@ -111,9 +112,10 @@ func Queue(order_chan chan<- OrderStruct) {//In channels: drv_buttons (add order
 	add_to_queue := make(chan OrderStruct)
 	start_order := make (chan OrderStruct)
 	defer close(drv_buttons)
+
 	go elevio.PollButtons(drv_buttons)
 
-	//move to diff module?
+	//maybe necessary to move to 
 	go bcast.DistributeOrder(start_order, add_to_queue)
 
 

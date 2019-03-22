@@ -1,4 +1,4 @@
-package bcasta
+package bcast
 
 import(
 	"./../../queueModule/queue"
