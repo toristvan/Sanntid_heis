@@ -2,12 +2,13 @@ package bcast
 
 import (
 	"../conn"
-	"../localip" //added
+	//"../localip" //added
 	"encoding/json"
 	"fmt"
 	"net"
 	"reflect"
 	"strings"
+	"time"
 )
 
 // Encodes received values from `chans` into type-tagged JSON, then broadcasts
@@ -32,25 +33,32 @@ func Transmitter(port int, chans ...interface{}) {
 
 	conn := conn.DialBroadcastUDP(port)
 	//prev code: addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
+	addr,_ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 	//new code start
-	addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
-	if err != nil{
-		var offlineIP string
-		offlineIP, err := localip.OfflineLocalIP()
-		if err != nil{
-			fmt.Prinln("Error: ", err)
-			return 
-		}
-		addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", offlineIP, port))
-	}
+	var loopbackIP string = "127.0.0.1" //standard loopback ip
+	offline_addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", loopbackIP, port))
 	//new code end
 	for {
 		chosen, value, _ := reflect.Select(selectCases)
 		buf, _ := json.Marshal(value.Interface())
-		conn.WriteTo([]byte(typeNames[chosen]+string(buf)), addr)
+		_, err = conn.WriteTo([]byte(typeNames[chosen]+string(buf)), addr)
+		//new code start
+		if err != nil{
+			//write to loopback if offline
+			_, err = conn.WriteTo([]byte(typeNames[chosen]+string(buf)), offline_addr)
+			//time.Sleep(100*time.Millisecond)
+			//fmt.Printf("Offline\n")
+			if err != nil{
+				fmt.Printf("%v\n", err)
+			}
+		} else{
+			//time.Sleep(100*time.Millisecond)
+			//fmt.Printf("Online\n")
+		}
+		//new code end
 	}
 }
-//Add functionality to broadcast to self if not connected to internet
+
 
 
 // Matches type-tagged JSON received on `port` to element types of `chans`, then

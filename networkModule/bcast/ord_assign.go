@@ -1,7 +1,7 @@
-package bcast
+package bcasta
 
 import(
-	""
+	"./../../queueModule/queue"
 	"time"
 )
 
@@ -11,6 +11,7 @@ func DistributeOrder(start_order_chan <-chan* queue.OrderStruct, add_order_chan 
 	var first_cost bool = true
 	var best_elev int =-1
 	var master bool = false
+	var port int = 20007
 
 	trans_order := make (chan OrderStruct)
 	rec_order := make (chan OrderStruct)
