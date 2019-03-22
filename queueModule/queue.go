@@ -10,9 +10,10 @@ const num_elevs int = 1
 const queue_size int = (elevio.Num_floors*3)-2
 const localID int = 0
 
+var queueIndex int = 0
 // type BT_Cab signalizises cab call
 // maybe add floorstop array
-type OrderCommand int 
+type OrderCommand int
 
 const (
 	CostReq 	OrderCommand = 0
@@ -192,3 +193,21 @@ func Queue(order_chan chan<- OrderStruct) {//In channels: drv_buttons (add order
 		}
 	}
 }
+
+/*
+func Queue(input_queue <-chan OrderStruct, order_chan chan<- OrderStruct) {
+
+	select{
+	case input := <-input_queue:
+		queueIndex += 1
+		if queueIndex == queue_size{
+			queueIndex = 1
+		}
+		orderQueue[input.ElevID][queueIndex].Button 		= input.Button
+		orderQueue[input.ElevID][queueIndex].Floor 			= input.Floor
+		orderQueue[input.ElevID][queueIndex].Timestamp 	= input.Timestamp
+
+		order_chan <- orderQueue[input.ElevID][queueIndex]
+	}
+}
+*/
