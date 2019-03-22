@@ -10,30 +10,6 @@ const num_elevs int = 1
 const queue_size int = (elevio.Num_floors*3)-2
 const localID int = 0
 
-var queueIndex int = 0
-// type BT_Cab signalizises cab call
-// maybe add floorstop array
-type OrderCommand int
-
-const (
-	CostReq 	OrderCommand = 0
-	CostSend 	OrderCommand = 1
-	OrdrAssign 	OrderCommand = 2
-	OrdrAdd 	OrderCommand = 3
-	OrdrConf 	OrderCommand = 4
-)
-
-type OrderStruct struct
-{
-	Button elevio.ButtonType
-	Floor int
-	timestamp time.Time
-	ElevID int
-	Cost int
-	Cmd OrderCommand
-
-}
-
 
 var orderQueue [num_elevs][queue_size] OrderStruct
 
@@ -97,20 +73,9 @@ func addToQueue(order OrderStruct, current_dir ElevStateType ,id int) {         
 	fmt.Printf("Order added. Current queue: %+v\n", orderQueue)
 }
 
-/*
-func CreateOrder(floor int, btn elevio.ButtonType) OrderStruct{
-	var order OrderStruct
-	order.Button = btn
-	order.Floor = floor
-
-	fmt.Printf("Order added: %+v\n Order queue: %+v\n", order, orderQueue)
-	return order
-}
-*/
-
+//Sletter alle ordre med oppgitt etasje i.
+//Kan evt bare slette dem med gitt retning, men er det vits?
 func RemoveOrder(floor int, id int){
-	//Sletter alle ordre med oppgitt etasje i.
-	//Kan evt bare slette dem med gitt retning, men er det vits?
 	var prev OrderStruct
 
 	orderQueue[id][0].Floor = -1
@@ -146,7 +111,6 @@ func Queue(order_chan chan<- OrderStruct) {//In channels: drv_buttons (add order
 	add_to_queue := make(chan OrderStruct)
 	start_order := make (chan OrderStruct)
 	defer close(drv_buttons)
-	//broadcast_costrequest := make(chan )
 	go elevio.PollButtons(drv_buttons)
 
 	//move to diff module?

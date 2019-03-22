@@ -1,29 +1,10 @@
 package bcast
 
-import{
+import(
+	""
 	"time"
-}
+)
 
-/*
-type OrderCommand int
-
-const {
-	CostReq		OrderStage = 0
-	CostSend	OrderStage = 1
-	OrdrAssign	OrderStage = 2
-	OrdrAdd		OrderStage = 3
-	OrdrConf	OrderStage = 4
-}
-*/
-
-//in main: orderstage_chan := make (chan bcast.OrderStage)
-
-
-//transmit_order := make(chan queue.OrderStruct)
-//drv_buttons := make(chan elevio.ButtonEvent)
-
-//need two goroutines or seperate functions 
-//to make sure only channel on button receiving program is altered
 
 func DistributeOrder(start_order_chan <-chan* queue.OrderStruct, add_order_chan chan*<- queue.OrderStruct){
 	var lowest_cost int = 10 //maxORder
