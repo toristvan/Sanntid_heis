@@ -19,8 +19,9 @@ const (
 	atFloor 	ElevState = 5
 )
 
+//TODO: name something different
 func eventHandler(someEvent <-chan int, nextState chan<- ElevState) {
-
+  //TODO: make eventType
   event := <- someEvent
   switch state {
   case idle:
