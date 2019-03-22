@@ -143,17 +143,14 @@ func Queue(order_chan chan<- OrderStruct) {//In channels: drv_buttons (add order
 
 	drv_buttons := make(chan elevio.ButtonEvent)
 	add_to_queue := make(chan OrderStruct)
-	master_order := make (chan OrderStruct)
-	slave_order := make(chan OrderStruct)
+	start_order := make (chan OrderStruct)
 	defer close(drv_buttons)
 	//broadcast_costrequest := make(chan )
 	go elevio.PollButtons(drv_buttons)
 
 	//move to diff module?
-	go bcast.Receiver(slave_order)
-	go bcast.SlaveOrder(slave_order, add_to_queue)
+	go bcast.DistributeOrder(start_order, add_to_queue)
 
-	go bcast.MasterOder(master_order)
 
 	//go bcast.OrderAssigning(broadcast_costrequest, order_assigned)
 	//go bcast.OrderReceiver()
@@ -167,7 +164,7 @@ func Queue(order_chan chan<- OrderStruct) {//In channels: drv_buttons (add order
 			new_order.Button = button_input.Button
 			new_order.Floor = button_input.Floor
 			new_order.Cmd = CostReq
-			master_order<- := new_order
+			start_order<- := new_order
 
 			fmt.Printf("Button input: %+v , Floor: %+v\n", new_order.Button, new_order.Floor)
 			if !checkIfInQueue(){
