@@ -1,12 +1,10 @@
 package queue
 
 import (
-	"./../networkModule/bcast"
 	"./../driverModule/elevio"
 	"./../fsmModule"
 	"./../configPackage"
 	"fmt"
-	"time"
 	)
 
 const num_elevs int = 1
@@ -14,7 +12,6 @@ const queue_size int = (elevio.Num_floors*3)-2
 const localID int = 0
 
 var orderQueue [num_elevs][queue_size] config.OrderStruct
-
 
 func InitQueue(){
 	var invalidOrder config.OrderStruct
@@ -184,7 +181,6 @@ func Queue(order_chan chan<- config.OrderStruct) {//In channels: drv_buttons (ad
 
 	//maybe necessary to move to main
 	go DistributeOrder(start_order, add_to_queue, localID)
-
 
 	//go bcast.OrderAssigning(broadcast_costrequest, order_assigned)
 	//go bcast.OrderReceiver()
