@@ -1,10 +1,10 @@
 package elevclient
 
 import (
-    "../driverModule/elevio"
-    "../fsmModule"
-    "../queueModule"
-    "../configPackage"
+    "./../driverModule/elevio"
+    "./../fsmModule"
+    "./../queueModule"
+    "./../configPackage"
     ."fmt"
 	  "time"
 )
