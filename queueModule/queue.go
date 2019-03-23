@@ -3,6 +3,8 @@ package queue
 import (
 	"./../networkModule/bcast"
 	"./../driverModule/elevio"
+	"./../fsmModule"
+	"./../configPackage"
 	"fmt"
 	"time"
 	)
@@ -11,12 +13,11 @@ const num_elevs int = 1
 const queue_size int = (elevio.Num_floors*3)-2
 const localID int = 0
 
-
-var orderQueue [num_elevs][queue_size] OrderStruct
+var orderQueue [num_elevs][queue_size] config.OrderStruct
 
 
 func InitQueue(){
-	var invalidOrder OrderStruct
+	var invalidOrder config.OrderStruct
 	invalidOrder.Button = 0
 	invalidOrder.Floor = -1
 	for j := 0; j< num_elevs; j++{
@@ -25,11 +26,11 @@ func InitQueue(){
 		}
 	}
 	orderQueue[localID][0].Floor = 0
-	orderQueue[localID][0].Button = elevio.BT_Cab
+	orderQueue[localID][0].Button = config.BT_Cab
 }
 //var orderQueue := make([] ,queue_size )
 
-func costFunction(newFloor int, currentFloor int, dir elevio.MotorDirection ) int { // IN: currentFloor, Direction, (Queues?) , OUT: Cost
+func costFunction(newFloor int, currentFloor int, dir config.MotorDirection ) int { // IN: currentFloor, Direction, (Queues?) , OUT: Cost
 	floorDiff := (newFloor - currentFloor)
 	cost := floorDiff
 	if floorDiff*int(dir) > 0 && dir != 0 {
@@ -43,22 +44,26 @@ func costFunction(newFloor int, currentFloor int, dir elevio.MotorDirection ) in
 	return cost
 }
 
-func insertToQueue(order OrderStruct, index int, id int){
+func dummyCostFunc(hallCall config.ButtonType, floor int, dir config.MotorDirection) int {
+  return 1
+}
+
+func insertToQueue(order config.OrderStruct, index int, id int){
 	for i := queue_size - 1; i > index; i--{
 		orderQueue[id][i] = orderQueue[id][i-1]
 	}
 	orderQueue[id][index] = order
 }
 
-func addToQueue(order OrderStruct, current_dir ElevStateType ,id int) {          //ElevStateType must be elecatorClient package
+func addToQueue(order config.OrderStruct, current_dir config.ElevStateType ,id int) {          //ElevStateType must be elecatorClient package
 	fmt.Printf("%+v\n", order)
 	if orderQueue[id][0].Floor == -1{
 		insertToQueue(order, 0, id)
-	} else if currentDir == GoingUp {
+	} else if current_dir == config.GoingUp {
 		if order.Floor < orderQueue[id][0].Floor {
 			insertToQueue(order, 0, id)
 		}
-	} else if currentDir == GoingDown {
+	} else if current_dir == config.GoingDown {
 		if order.Floor > orderQueue[id][0].Floor {
 			insertToQueue(order, 0, id)
 		}
@@ -77,7 +82,7 @@ func addToQueue(order OrderStruct, current_dir ElevStateType ,id int) {         
 //Sletter alle ordre med oppgitt etasje i.
 //Kan evt bare slette dem med gitt retning, men er det vits?
 func RemoveOrder(floor int, id int){
-	var prev OrderStruct
+	var prev config.OrderStruct
 
 	orderQueue[id][0].Floor = -1
 	orderQueue[id][0].Button = 0
@@ -92,7 +97,7 @@ func RemoveOrder(floor int, id int){
 }
 
 
-func checkIfInQueue(order OrderStruct) bool{
+func checkIfInQueue(order config.OrderStruct) bool{
 	for i := 0; i < num_elevs; i++ {
 		for j := 0; j < queue_size; j++ {
 			if order.Floor == orderQueue[i][j].Floor && order.Button == orderQueue[i][j].Button {
@@ -103,86 +108,82 @@ func checkIfInQueue(order OrderStruct) bool{
 	return false
 }
 
-func DistributeOrder(start_order_chan <-chan queue.OrderStruct, add_order_chan chan<- queue.OrderStruct, local_id int){
+func DistributeOrder(start_order_chan <-chan config.OrderStruct, add_order_chan chan<- config.OrderStruct, local_id int){
 	var lowest_cost int = 10 //maxORder
-	var first_cost bool = true
 	var best_elev int =-1
 	var master bool = false
 	var port int = 20007
+	var new_order config.OrderStruct
 
-	trans_order := make (chan OrderStruct)
-	rec_order := make (chan OrderStruct)
+	trans_order := make (chan config.OrderStruct)
+	rec_order := make (chan config.OrderStruct)
 	
 	go bcast.Receiver(port, rec_order)
 	go bcast.Transmitter(port, trans_order)
 
+	//Seems to be many unneccessary if's here
 	for{
+		ticker := time.NewTicker(100*time.Millisecond)
+		defer ticker.Stop()
 		select{
-		case new_order := <-start_order_chan:
-			select{
-			case new_order.Cmd == queue.CostReq:
-				new_order.cdm = queue.CostSend
+		case new_order = <-start_order_chan:
+			if new_order.Cmd == config.CostReq {
+				new_order.Cmd = config.CostSend
 				master = true
 				trans_order <- new_order
 			}
-		case new_order := <-rec_order:
+		case new_order = <-rec_order:
 			switch new_order.Cmd{
-			case queue.CostSend:
-				var cost int = queue.CostFunction(new_order)
+			case config.CostSend:
+				new_order.Cost = dummyCostFunc(new_order.Button, new_order.Floor, config.MD_Down)      //Current CF requires currentfloor and direction. How to fix
 				new_order.ElevID = local_id
-				new_order.Cmd = queue.OrdrAssign
+				new_order.Cmd = config.OrdrAssign
 				trans_order <- new_order //transmit new order
-			case queue.OrdrAssign:
-				if master{
-					if first_cost{
-						ticker := time.Ticker(100*Millisecond)
-						first_cost = false
-					}
-					if new_order.Cost < lowest_cost{
-						lowest_cost = new_order.Cost
-						best_elev = new_order.ElevID
-					}
-					if ticker.c{
-						new_order.ElevID = best_elev
-						new_order.Cost = lowest_cost
-						new_order.Cmd = queue.OrdrAdd
-						trans_order <- new_order //transmit new order
-						master = false
-						first_cost = true
-						lowest_cost = 10 //maxcost
-						best_elev = -1
-					}
+			case config.OrdrAssign:
+				if master && new_order.Cost < lowest_cost{
+					lowest_cost = new_order.Cost
+					best_elev = new_order.ElevID
 				}
-			case queue.OrdrAdd:
+			case config.OrdrAdd:
 				if new_order.ElevID == local_id{
 					add_order_chan <- new_order //add order to queue
-					new_order.Cmd = queue.OrdrConf
+					new_order.Cmd = config.OrdrConf
 					trans_order <- new_order //transmit new order
 				}
-			case queue.OrdrConf:
+			case config.OrdrConf:
 				if new_order.ElevID != local_id{
 					add_order_chan <- new_order
 
 				}
+			}
+		case <- ticker.C:
+			if master {
+				new_order.ElevID = best_elev
+				new_order.Cost = lowest_cost
+				new_order.Cmd = config.OrdrAdd
+				trans_order <- new_order //transmit new order
+				master = false
+				lowest_cost = 10 //maxcost
+				best_elev = -1
 			}
 		}
 	}
 }
 
 
-func Queue(order_chan chan<- OrderStruct) {//In channels: drv_buttons (add order) , floor reached (remove order) , costfunction. Out : push Order
+func Queue(order_chan chan<- config.OrderStruct) {//In channels: drv_buttons (add order) , floor reached (remove order) , costfunction. Out : push Order
 	InitQueue()
-	var prev_local_order OrderStruct
+	var prev_local_order config.OrderStruct
 
-	drv_buttons := make(chan elevio.ButtonEvent)
-	add_to_queue := make(chan OrderStruct)
-	start_order := make (chan OrderStruct)
+	drv_buttons := make(chan config.ButtonEvent)
+	add_to_queue := make(chan config.OrderStruct)
+	start_order := make (chan config.OrderStruct)
 	defer close(drv_buttons)
 
 	go elevio.PollButtons(drv_buttons)
 
 	//maybe necessary to move to main
-	go bcast.DistributeOrder(start_order, add_to_queue, localID)
+	go DistributeOrder(start_order, add_to_queue, localID)
 
 
 	//go bcast.OrderAssigning(broadcast_costrequest, order_assigned)
@@ -192,19 +193,19 @@ func Queue(order_chan chan<- OrderStruct) {//In channels: drv_buttons (add order
 		select{
 		case button_input := <-drv_buttons:   //Button input from elevator
 			//Move outside so it's not decalred multiple times?
-			var new_order OrderStruct
+			var new_order config.OrderStruct
 
 			new_order.Button = button_input.Button
 			new_order.Floor = button_input.Floor
-			new_order.Cmd = CostReq
-			start_order<- := new_order
+			new_order.Cmd = config.CostReq
+			start_order <- new_order
 
 			fmt.Printf("Button input: %+v , Floor: %+v\n", new_order.Button, new_order.Floor)
-			if !checkIfInQueue(){
-				addToQueue(new_order, localID)
+			if !checkIfInQueue(new_order){
+				addToQueue(new_order, fsm.RetrieveElevState(), localID)
 			}
 		case order_to_add := <-add_to_queue:
-			addToQueue(order_to_add, order_to_add.ElevID)
+			addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID)
 			//Add to watchdog?
 			//if new_order.button
 			//broadcast_costrequest <- new_order
