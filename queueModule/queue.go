@@ -2,9 +2,11 @@ package queue
 
 import (
 	"./../driverModule/elevio"
+	"./../networkModule/bcast"
 	"./../fsmModule"
 	"./../configPackage"
 	"fmt"
+	"time"
 	)
 
 const num_elevs int = 1
@@ -168,7 +170,7 @@ func DistributeOrder(start_order_chan <-chan config.OrderStruct, add_order_chan 
 }
 
 
-func Queue(order_chan chan<- config.OrderStruct) {//In channels: drv_buttons (add order) , floor reached (remove order) , costfunction. Out : push Order
+func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct) {//In channels: drv_buttons (add order) , floor reached (remove order) , costfunction. Out : push Order
 	InitQueue()
 	var prev_local_order config.OrderStruct
 
@@ -200,6 +202,10 @@ func Queue(order_chan chan<- config.OrderStruct) {//In channels: drv_buttons (ad
 			if !checkIfInQueue(new_order){
 				addToQueue(new_order, fsm.RetrieveElevState(), localID)
 			}
+
+		case order_to_add := <- input_queue:
+			addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID)
+
 		case order_to_add := <-add_to_queue:
 			addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID)
 			//Add to watchdog?
@@ -212,12 +218,12 @@ func Queue(order_chan chan<- config.OrderStruct) {//In channels: drv_buttons (ad
 
 			//Unnecessary below?
 			//assignedorder <- order_assigned
-
-        //case orderreceived
 		default:
 			if orderQueue[localID][0] != prev_local_order && orderQueue[localID][0].Floor != -1 {
 				prev_local_order = orderQueue[localID][0]
-				order_chan <- orderQueue[localID][0]
+				execute_chan <- orderQueue[localID][0]
+			} else {
+				time.Sleep(100*time.Millisecond)   //Unload CPU
 			}
 		}
 	}
