@@ -1,7 +1,7 @@
 package fsm
 
 import(
-  "../configPackage"
+  "./../configPackage"
   "./../driverModule/elevio"
   ."fmt"
   "time"
