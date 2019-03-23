@@ -10,14 +10,10 @@ import (
 )
 /*
 =========================== Bothause! ================================
-Denne fungerer med å bruke "Test queue" i queueModule
+Denne fungerer med å bruke "Test queue" i queueModule (kanskje, har blitt modifisert)
 
 // TODO:
-oppdater funksjonen queue i queueModule
-trenger input channel "input_queue" eller noe lignende
-
-
-queue.Queue(input_queue, order_chan)
+Legge inn retransmit order hvis en blir passert. Line 142->
 */
 
 
@@ -26,7 +22,7 @@ const localID = 1
 type executeOrderStruct struct{
   active bool
   Floor int
-  Button elevio.ButtonType
+  Button config.ButtonType
 }
 
 var executeOrderQueue[4] executeOrderStruct
@@ -37,9 +33,9 @@ func dummyCostFunc(hallCall elevio.ButtonType, floor int) int {
 }
 
 
-func executeOrder(order_chan <-chan queue.OrderStruct, pending_orders chan<- executeOrderStruct){
+func executeOrder(execute_chan <-chan queue.OrderStruct, pending_orders chan<- executeOrderStruct){
   select{
-  case new_order := <- order_chan:   //Input from queue
+  case new_order := <- execute_chan:   //Input from queue
 
       executeOrderQueue[index].Floor  = new_order.Floor
       executeOrderQueue[index].Button = new_order.Button
@@ -69,7 +65,7 @@ func RunElevator(){
     drv_obstr   := make(chan bool)
     drv_stop    := make(chan bool)
 
-    order_chan		:= make(chan config.OrderStruct)
+    execute_chan	:= make(chan config.OrderStruct)
     input_queue		:= make(chan config.OrderStruct)
     pending_orders 	:= make(chan config.OrderStruct, 5)
 
@@ -82,8 +78,8 @@ func RunElevator(){
 	go elevio.PollStopButton(drv_stop)
 	go fsm.ElevStateMachine(status_elev_state, sync_elev_state, order_type, next_floor)
     go fsm.ElevInputCommand(new_command)
-    go queue.Queue(input_queue, order_chan)
-    go executeOrder(order_chan, pending_orders)
+    go queue.Queue(input_queue, execute_chan)
+    go executeOrder(execute_chan, pending_orders)
 
     for {
 
@@ -143,7 +139,11 @@ func RunElevator(){
               	elevio.SetButtonLamp(current_order.Button, current_floor, false)
                 //queue.RemoveOrder(current_floor, localID)
               	new_command <- config.FloorReached
-          	}
+          	} else if current_floor < current_order.Floor && elev_state == GoingUp {   //These two can be merged.
+            	//Retransmit/reassign order
+            } else if current_floor > current_order.Floor && elev_state == GoingDown {  //Readability tho?
+            	//Retransmit/reassign order 
+            }
           	sync_elev_state <- config.Active
 
       	case current_status := <- status_elev_state:
