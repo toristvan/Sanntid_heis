@@ -1,7 +1,7 @@
 package elevio
 
 import (
-	"../../configPackage"
+	"./../../configPackage"
 	"time"
 	"sync"
 	"net"
