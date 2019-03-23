@@ -1,9 +1,12 @@
 package elevio
 
-import "time"
-import "sync"
-import "net"
-import "fmt"
+import (
+	"../../configPackage"
+	"time"
+	"sync"
+	"net"
+	"fmt"
+)
 
 const _pollRate = 20 * time.Millisecond
 const Num_floors int = 4
@@ -12,26 +15,6 @@ var _initialized bool = false
 var _mtx sync.Mutex
 var _conn net.Conn
 
-type MotorDirection int
-
-const (
-	MD_Up   MotorDirection = 1
-	MD_Down                = -1
-	MD_Stop                = 0
-)
-
-type ButtonType int
-
-const (
-	BT_HallUp   ButtonType = 0
-	BT_HallDown            = 1
-	BT_Cab                 = 2
-)
-
-type ButtonEvent struct {
-	Floor  int
-	Button ButtonType
-}
 
 func Init(addr string) { //numFloors int) {
 	if _initialized {
@@ -49,18 +32,18 @@ func Init(addr string) { //numFloors int) {
 
 	for i := 0; i < 3; i++ {
 		for j := 0; j < Num_floors; j++ {
-			SetButtonLamp(ButtonType(i), j, false)	
+			SetButtonLamp(config.ButtonType(i), j, false)	
 		}
 	}
 }
 
-func SetMotorDirection(dir MotorDirection) {
+func SetMotorDirection(dir config.MotorDirection) {
 	_mtx.Lock()
 	defer _mtx.Unlock()
 	_conn.Write([]byte{1, byte(dir), 0, 0})
 }
 
-func SetButtonLamp(button ButtonType, floor int, value bool) {
+func SetButtonLamp(button config.ButtonType, floor int, value bool) {
 	_mtx.Lock()
 	defer _mtx.Unlock()
 	_conn.Write([]byte{2, byte(button), byte(floor), toByte(value)})
@@ -86,15 +69,15 @@ func SetStopLamp(value bool) {
 
 // example
 
-func PollButtons(receiver chan<- ButtonEvent) {
+func PollButtons(receiver chan<- config.ButtonEvent) {
 	prev := make([][3]bool, Num_floors)
 	for {
 		time.Sleep(_pollRate)
 		for f := 0; f < Num_floors; f++ {
-			for b := ButtonType(0); b < 3; b++ {
+			for b := config.ButtonType(0); b < 3; b++ {
 				v := getButton(b, f)
 				if v != prev[f][b] && v != false {
-					receiver <- ButtonEvent{f, ButtonType(b)}
+					receiver <- config.ButtonEvent{f, config.ButtonType(b)}
 				}
 				prev[f][b] = v
 			}
@@ -140,7 +123,7 @@ func PollObstructionSwitch(receiver chan<- bool) {
 
 //
 
-func getButton(button ButtonType, floor int) bool {
+func getButton(button config.ButtonType, floor int) bool {
 	_mtx.Lock()
 	defer _mtx.Unlock()
 	_conn.Write([]byte{6, byte(button), byte(floor), 0})
