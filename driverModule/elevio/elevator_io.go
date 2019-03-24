@@ -9,6 +9,7 @@ import (
 )
 
 const _pollRate = 20 * time.Millisecond
+const Ground_floor int = 1 //Necessary?
 const Num_floors int = 4
 
 var _initialized bool = false
