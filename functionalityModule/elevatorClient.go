@@ -5,8 +5,8 @@ import (
     "./../queueModule"
     "./../fsmModule"
     "./../configPackage"
-    ."fmt"
-	  "time"
+    //."fmt"
+	  //"time"
 )
 /*
 =========================== Bothause! ================================
@@ -16,39 +16,44 @@ Denne fungerer med å bruke "Test queue" i queueModule (kanskje, har blitt modif
 Legge inn retransmit order hvis en blir passert. Line 142->
 */
 
-
 const localID = 1
 
-type executeOrderStruct struct{
-  active bool
-  Floor int
+type floorStatus struct{
+  stop bool
   Button config.ButtonType
 }
 
-var executeOrderQueue[4] executeOrderStruct
-var index = 1
+var stopArray[elevio.Num_floors] floorStatus
+//var index = 1
+func  isEmpty(arr [elevio.Num_floors]floorStatus, from int, to int) bool{
+  for i := from - 1 ; i < to - 1 ; i++{
+    if arr[i].stop {
+      return false
+    }
+  }
+  return true
+}
 
-func dummyCostFunc(hallCall elevio.ButtonType, floor int) int {
+
+func dummyCostFunc(hallCall config.OrderStruct) int {
   return 1
 }
 
 
-func executeOrder(execute_chan <-chan queue.OrderStruct, pending_orders chan<- executeOrderStruct){
+func executeOrder(execute_chan <-chan config.OrderStruct){ //, pending_orders chan<- floorStatus){
   select{
   case new_order := <- execute_chan:   //Input from queue
+    stopArray[new_order.Floor-1].Button = new_order.Button
+    stopArray[new_order.Floor-1].stop = true
 
-      executeOrderQueue[index].Floor  = new_order.Floor
-      executeOrderQueue[index].Button = new_order.Button
-      executeOrderQueue[index].active = true
-
-      Println("executeOrderQueue", executeOrderQueue[new_order.Floor].Floor)
-      pending_orders <- executeOrderQueue[index]
+    //pending_orders <- stopArray[index]
   }
 }
 
+/*
 func RunElevator(){
 
-    var current_order executeOrderStruct
+    var current_order config.OrderStruct //floorStatus
     var current_floor int
 
     var elevEvent config.ButtonEvent
@@ -60,23 +65,24 @@ func RunElevator(){
     status_elev_state   := make(chan config.Status)
     sync_elev_state     := make(chan config.Status)
 
-    drv_buttons := make(chan config.ButtonEvent)
     drv_floors  := make(chan int)
-    drv_obstr   := make(chan bool)
-    drv_stop    := make(chan bool)
+    //drv_buttons := make(chan config.ButtonEvent)
+    //drv_obstr   := make(chan bool)
+    //drv_stop    := make(chan bool)
 
-    execute_chan	:= make(chan config.OrderStruct)
-    input_queue		:= make(chan config.OrderStruct)
-    pending_orders 	:= make(chan config.OrderStruct, 5)
+    execute_chan	  := make(chan config.OrderStruct) //Receives first element in queue
+    input_queue		  := make(chan config.OrderStruct)
+    pending_orders  := make(chan floorStatus, 5) //Why 5?
 
     current_floor = fsm.ElevatorInit()
     queue.InitQueue()
 
-    go elevio.PollButtons(drv_buttons)
     go elevio.PollFloorSensor(drv_floors)
-    go elevio.PollObstructionSwitch(drv_obstr)
-	go elevio.PollStopButton(drv_stop)
-	go fsm.ElevStateMachine(status_elev_state, sync_elev_state, order_type, next_floor)
+    //go elevio.PollButtons(drv_buttons)
+    //go elevio.PollObstructionSwitch(drv_obstr)
+	  //go elevio.PollStopButton(drv_stop)
+	  
+    go fsm.ElevStateMachine(status_elev_state, sync_elev_state, order_type, next_floor)
     go fsm.ElevInputCommand(new_command)
     go queue.Queue(input_queue, execute_chan)
     go executeOrder(execute_chan, pending_orders)
@@ -84,23 +90,24 @@ func RunElevator(){
     for {
 
       	select {
+        //Why is this here?
       	case button_input := <-drv_buttons:
         	var new_order config.OrderStruct
           	//sende ordre til andre her
-    		new_order.Button     = button_input.Button
-    		new_order.Floor      = button_input.Floor
-        	new_order.ElevID     = dummyCostFunc(button_input.Button, button_input.Floor)
+    		  new_order.Button     = button_input.Button
+    		  new_order.Floor      = button_input.Floor
+        	new_order.Cost       = dummyCostFunc(button_input.Button, button_input.Floor)
+          new_order.ElevID     = localID
         	new_order.Timestamp  = time.Now()
-    		input_queue <- new_order
-
+    		  input_queue <- new_order
       	case execute_order := <- pending_orders:
         	next_floor    = execute_order.Floor
         	order_type    = execute_order.Button
         	current_order = execute_order
 
 	        //Add to watchdog here
-
 	  		elevio.SetButtonLamp(order_type, next_floor, true)
+
 
 	        switch order_type {
 	        case config.BT_HallUp, config.BT_HallDown:
@@ -133,15 +140,14 @@ func RunElevator(){
 
           	current_floor = floor_input
           	elevio.SetFloorIndicator(current_floor)
-          	Println("Current floor:", current_floor)
 
           	if current_floor == current_order.Floor {
               	elevio.SetButtonLamp(current_order.Button, current_floor, false)
                 //queue.RemoveOrder(current_floor, localID)
               	new_command <- config.FloorReached
-          	} else if current_floor < current_order.Floor && elev_state == GoingUp {   //These two can be merged.
+          	} else if current_floor < current_order.Floor && fsm.RetrieveElevState() == config.GoingUp {   //These two can be merged.
             	//Retransmit/reassign order
-            } else if current_floor > current_order.Floor && elev_state == GoingDown {  //Readability tho?
+            } else if current_floor > current_order.Floor && fsm.RetrieveElevState() == config.GoingDown {  //Readability tho?
             	//Retransmit/reassign order 
             }
           	sync_elev_state <- config.Active
@@ -160,4 +166,62 @@ func RunElevator(){
       	}
 
     }
+}
+*/
+
+func ElevRunner(){
+  
+  var current_floor int
+  //var current_dir config.MotorDirection
+  //var prev_dir config.MotorDirection
+  var current_state config.ElevStateType
+  var prev_state config.ElevStateType
+
+
+  drv_floors  := make (chan int)
+  input_queue := make (chan config.OrderStruct)
+  execute_chan := make (chan config.OrderStruct)
+  //elev_state_chan := make (chan config.ElevStateType)
+  elev_cmd_chan := make (chan config.ElevCommand)
+
+
+  go elevio.PollFloorSensor(drv_floors)
+  go queue.Queue(input_queue, execute_chan)
+  //go executeOrder(execute_chan)
+  go fsm.ElevStateMachine2(elev_cmd_chan, &current_state)
+
+
+
+  for{
+    select{
+    case new_floor := <- drv_floors:
+      prev_state = current_state
+      current_floor = new_floor
+      if stopArray[new_floor].stop{
+        //Stop routine
+        elev_cmd_chan <- config.FloorReached 
+        stopArray[new_floor].stop = false
+      }
+      elevio.SetFloorIndicator(current_floor)
+      
+      switch prev_state{
+      case config.GoingUp:
+        if !isEmpty(stopArray, current_floor, elevio.Num_floors){
+          elev_cmd_chan <- config.GoUp
+        } else if !isEmpty(stopArray, elevio.Ground_floor, current_floor){
+          elev_cmd_chan <- config.GoDown
+        } else{
+          elev_cmd_chan <- config.Finished
+        }
+      case config.GoingDown:
+        if !isEmpty(stopArray, elevio.Ground_floor, current_floor){
+          elev_cmd_chan <- config.GoDown
+        } else if !isEmpty(stopArray, current_floor, elevio.Num_floors){
+          elev_cmd_chan <- config.GoUp
+        } else{
+          elev_cmd_chan <- config.Finished
+        }
+      }
+    }
+  }
 }
