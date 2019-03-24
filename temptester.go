@@ -3,11 +3,12 @@ package main
 import (
     "fmt"
     "./networkModule/bcast"
-    "./queueModule"
-    "./driverModule/elevio"
-    //"./networkModule/localip"
+    "./configPackage"
     "time"
 	/*
+    "./networkModule/localip"
+    "./queueModule"
+    "./driverModule/elevio"
     "reflect"
     "os"
     "net"
@@ -22,18 +23,18 @@ func main(){
 	local,_ = localip.LocalIP()
 	fmt.Printf("%s\n", local)
 	*/
-	//queue.InitQueue()
-	var test_order queue.OrderStruct
-	test_order.Button = elevio.BT_HallUp
+	//config.InitQueue()
+	var test_order config.OrderStruct
+	test_order.Button = config.BT_HallUp
 	test_order.Floor = 2
 	test_order.ElevID = 1
 	test_order.Cost = 5
-	test_order.Cmd = queue.CostReq
+	test_order.Cmd = config.CostReq
 	test_order.Timestamp = time.Now()
 	//printOrder(test_order)
 
-	trans_chan := make (chan queue.OrderStruct)
-	rec_chan := make (chan queue.OrderStruct)
+	trans_chan := make (chan config.OrderStruct)
+	rec_chan := make (chan config.OrderStruct)
 	go bcast.Transmitter(20005, trans_chan)
 	go bcast.Receiver(20005, rec_chan)
 	
@@ -62,23 +63,24 @@ func setstring(trans chan<- string){
 	}
 }
 
-func setOrder(trans chan<- queue.OrderStruct){
-	var test_order queue.OrderStruct
-	test_order.Button = elevio.BT_HallUp
+func setOrder(trans chan<- config.OrderStruct){
+	var test_order config.OrderStruct
+	test_order.Button = config.BT_HallUp
 	test_order.Floor = 0
 	test_order.ElevID = 1
 	test_order.Cost = 5
-	test_order.Cmd = queue.CostReq
+	test_order.Cmd = config.CostReq
 	test_order.Timestamp = time.Now()
 	for{
+		//Moving time sleep to top makes reliable offline transmission ??
+		time.Sleep(500* time.Millisecond)
 		test_order.Floor+=1
 		test_order.Timestamp = time.Now()
 		trans <- test_order
-		time.Sleep(5000* time.Millisecond)
 	}
 
 }
 
-func printOrder(order queue.OrderStruct){
+func printOrder(order config.OrderStruct){
 	fmt.Printf("Button: %d\nFloor: %d\nID: %d\nCost: %d\nCmd: %d\nTime: %s\n", order.Button, order.Floor, order.ElevID, order.Cost, order.Cmd, order.Timestamp.String())
 }
