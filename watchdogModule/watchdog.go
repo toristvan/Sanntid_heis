@@ -37,7 +37,7 @@ func timeout (order *orderStruct) bool{
   return time.Since(order.startTime)>length;
 }
 
-func Watchdog(retransmit chan<- queue.OrderStruct, numElevs int, queueSize int){
+func Watchdog(retransmit chan<- config.OrderStruct, numElevs int, queueSize int){
   //a := NewWatchdog()
   //a.initWatchdog(10 * time.Second)
 
