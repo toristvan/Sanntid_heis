@@ -10,7 +10,7 @@ const (
 	Idle 				ElevStateType = 0
 	GoingUp 			ElevStateType = 1
 	GoingDown 			ElevStateType = 2
-	AtFloor 			ElevStateType = 4
+	AtFloor 			ElevStateType = 3
 )
 
 type MotorDirection int
@@ -64,6 +64,7 @@ const (
   Wait          ElevCommand = 5
 )
 
+//What kind of status?
 type Status int
 const (
   Pending Status = 0

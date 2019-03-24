@@ -43,7 +43,8 @@ func costFunction(newFloor int, currentFloor int, dir config.MotorDirection ) in
 	return cost
 }
 
-func dummyCostFunc(hallCall config.ButtonType, floor int, dir config.MotorDirection) int {
+//func dummyCostFunc(hallCall config.ButtonType, floor int, dir config.MotorDirection) int {
+func dummyCostFunc(order config.OrderStruct) int {
   return 1
 }
 
@@ -51,9 +52,13 @@ func insertToQueue(order config.OrderStruct, index int, id int){
 	for i := queue_size - 1; i > index; i--{
 		orderQueue[id][i] = orderQueue[id][i-1]
 	}
+	order.Timestamp = time.Now()
 	orderQueue[id][index] = order
 }
 
+//Replace with motordir?
+// Make sure lights are only set when we know order will be executed
+// For example, when added to queue.
 func addToQueue(order config.OrderStruct, current_dir config.ElevStateType ,id int) {          //ElevStateType must be elecatorClient package
 	fmt.Printf("%+v\n", order)
 	if orderQueue[id][0].Floor == -1{
@@ -126,15 +131,21 @@ func DistributeOrder(start_order_chan <-chan config.OrderStruct, add_order_chan 
 		defer ticker.Stop()
 		select{
 		case new_order = <-start_order_chan:
-			if new_order.Cmd == config.CostReq {
+			switch new_order.Cmd{ 
+			case config.CostReq:
 				new_order.Cmd = config.CostSend
 				master = true
+				trans_order <- new_order
+			case config.OrdrAdd:
+				add_order_chan <- new_order
+				new_order.Cmd = config.OrdrConf
+				new_order.Cost = -1 //cabcall
 				trans_order <- new_order
 			}
 		case new_order = <-rec_order:
 			switch new_order.Cmd{
 			case config.CostSend:
-				new_order.Cost = dummyCostFunc(new_order.Button, new_order.Floor, config.MD_Down)      //Current CF requires currentfloor and direction. How to fix
+				new_order.Cost = dummyCostFunc(new_order)//Current CF requires currentfloor and direction. How to fix
 				new_order.ElevID = local_id
 				new_order.Cmd = config.OrdrAssign
 				trans_order <- new_order //transmit new order
@@ -174,12 +185,14 @@ func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.Ord
 	InitQueue()
 	var prev_local_order config.OrderStruct
 
-	drv_buttons := make(chan config.ButtonEvent)
-	add_to_queue := make(chan config.OrderStruct)
+	drv_buttons := make (chan config.ButtonEvent)
+	add_to_queue := make (chan config.OrderStruct)
 	start_order := make (chan config.OrderStruct)
+	//watchdog_chan := make (chan config.OrderStruct)
 	defer close(drv_buttons)
 
 	go elevio.PollButtons(drv_buttons)
+	//go watchdog.Watchdog(watchdog_chan, num_elevs, queue_size)
 
 	//maybe necessary to move to main
 	go DistributeOrder(start_order, add_to_queue, localID)
@@ -195,7 +208,13 @@ func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.Ord
 
 			new_order.Button = button_input.Button
 			new_order.Floor = button_input.Floor
-			new_order.Cmd = config.CostReq
+
+			// If Hallcall, need to allocate order
+			if (new_order.Button != config.BT_Cab){
+				new_order.Cmd = config.CostReq
+			} else{ 
+				new_order.Cmd = config.OrdrAdd
+			}
 			start_order <- new_order
 
 			fmt.Printf("Button input: %+v , Floor: %+v\n", new_order.Button, new_order.Floor)
@@ -205,9 +224,13 @@ func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.Ord
 
 		case order_to_add := <- input_queue:
 			addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID)
+			//is this to add cab calls? in that case, make sure to transmit with Cmd=OrdrConf
+			//new_order.Cmd = config.OrdrConf
+			//start_order <= new__order
+			//If not, replacment for whats below?
 
 		case order_to_add := <-add_to_queue:
-			addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID)
+			addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID) //Set lights
 			//Add to watchdog?
 			//if new_order.button
 			//broadcast_costrequest <- new_order
@@ -218,6 +241,8 @@ func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.Ord
 
 			//Unnecessary below?
 			//assignedorder <- order_assigned
+		//case re_add_order := <-watchdog_chan:
+			//addToQueue(re_add_order, fsm.RetrieveElevState(), localID)
 		default:
 			if orderQueue[localID][0] != prev_local_order && orderQueue[localID][0].Floor != -1 {
 				prev_local_order = orderQueue[localID][0]
