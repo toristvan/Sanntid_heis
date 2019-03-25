@@ -24,8 +24,6 @@ func InitQueue(){
 			orderQueue[j][i] = invalidOrder
 		}
 	}
-	orderQueue[config.LocalID][0].Floor = 0
-	orderQueue[config.LocalID][0].Button = config.BT_Cab
 }
 //var orderQueue := make([] ,queue_size )
 
@@ -59,9 +57,7 @@ func insertToQueue(order config.OrderStruct, index int, id int){
 //Replace with motordir?
 // Make sure lights are only set when we know order will be executed
 // For example, when added to queue.
-func addToQueue(order config.OrderStruct, current_dir config.ElevStateType ,id int) {          //ElevStateType must be elecatorClient package
-
-	//fmt.Printf("%+v\n", order)
+func addToQueue(order config.OrderStruct, current_dir config.ElevStateType , id int) { 
 
 	if orderQueue[id][0].Floor == -1{
 		insertToQueue(order, 0, id)
@@ -81,9 +77,10 @@ func addToQueue(order config.OrderStruct, current_dir config.ElevStateType ,id i
 			}
 		}
 	}
-	for j := 0; j < queue_size; j++{
-		fmt.Printf("Order added. Current queue: %+v\n", orderQueue[id][j])
-	}
+	//for j := 0; j < queue_size; j++{
+		fmt.Printf("Order added")
+	//}
+	elevio.SetButtonLamp(order.Button, order.Floor, true)
 
 }
 
@@ -101,9 +98,9 @@ func RemoveOrder(floor int, id int){
 		orderQueue[id][i+1] = prev
 	}
 
-	for j := 0; j < queue_size; j++{
-		fmt.Printf("Order removed. \n New order queue: %+v\n", orderQueue[id][j])
-	}
+	//for j := 0; j < queue_size; j++{
+		fmt.Printf("Order removed from queue")
+	//}
 }
 
 
@@ -118,7 +115,7 @@ func checkIfInQueue(order config.OrderStruct) bool{
 	return false
 }
 
-func DistributeOrder(start_order_chan <-chan config.OrderStruct, add_order_chan chan<- config.OrderStruct, local_id int){
+func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan chan<- config.OrderStruct, local_id int){
 	var lowest_cost int = 10 //maxORder
 	var best_elev int =-1
 	var master bool = false
@@ -136,7 +133,7 @@ func DistributeOrder(start_order_chan <-chan config.OrderStruct, add_order_chan 
 		ticker := time.NewTicker(100*time.Millisecond)
 		defer ticker.Stop()
 		select{
-		case new_order := <-start_order_chan:
+		case new_order = <- distr_order_chan:
 			switch new_order.Cmd{
 			case config.CostReq:
 				new_order.Cmd = config.CostSend
@@ -148,13 +145,13 @@ func DistributeOrder(start_order_chan <-chan config.OrderStruct, add_order_chan 
 				new_order.Cost = -1 //cabcall
 				trans_order <- new_order
 			}
-		case new_order := <-rec_order:
+		case new_order = <-rec_order:
 			switch new_order.Cmd{
 			case config.CostSend:
 				new_order.Cost = dummyCostFunc(new_order)//Current CF requires currentfloor and direction. How to fix
 				new_order.ElevID = local_id
 				new_order.Cmd = config.OrdrAssign
-				trans_order <- new_order //transmit new order
+				trans_order <- new_order //transmit order cost
 			case config.OrdrAssign:
 				if master && new_order.Cost < lowest_cost{
 					lowest_cost = new_order.Cost
@@ -164,12 +161,11 @@ func DistributeOrder(start_order_chan <-chan config.OrderStruct, add_order_chan 
 				if new_order.ElevID == local_id{
 					add_order_chan <- new_order //add order to queue
 					new_order.Cmd = config.OrdrConf
-					trans_order <- new_order //transmit new order
+					trans_order <- new_order //transmit order confirmation
 				}
 			case config.OrdrConf:
 				if new_order.ElevID != local_id{
 					add_order_chan <- new_order
-
 				}
 			}
 		case <- ticker.C:
@@ -192,13 +188,12 @@ func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.Ord
 	//var prev_local_order config.OrderStruct
 
 	add_to_queue := make(chan config.OrderStruct)
-	//start_order := make(chan config.OrderStruct)
+	distr_order := make(chan config.OrderStruct)
 	//watchdog_chan := make(chan config.OrderStruct)
 
 	//go watchdog.Watchdog(watchdog_chan, num_elevs, queue_size)
 	//maybe necessary to move to main
-	//go DistributeOrder(start_order, add_to_queue, localID)
-	//go bcast.OrderAssigning(broadcast_costrequest, order_assigned)
+	go DistributeOrder(distr_order, add_to_queue, config.LocalID)
 	//go bcast.OrderReceiver()
 
 	//drv_buttons := make (chan config.ButtonEvent) //distrubieres fra IO_channels, evt kan man kalle IO.IOwrapper er eller noe
@@ -209,21 +204,27 @@ func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.Ord
 		select{
 		case new_order := <- input_queue:
 
-			// If Hallcall, need to allocate order
-			if (new_order.Button != config.BT_Cab){
-				new_order.Cmd = config.CostReq
-			} else{
-				new_order.Cmd = config.OrdrAdd
-			}
-			//start_order <- new_order //ser ut at denne kanskje blokkerer da den ikke er i bruk
-
 			fmt.Printf("Button input: %+v , Floor: %+v\n", new_order.Button, new_order.Floor)
 			if !checkIfInQueue(new_order){
-				addToQueue(new_order, fsm.RetrieveElevState(), config.LocalID)
+				distr_order <- new_order
 			}
 
 		case order_to_add := <-add_to_queue:
 			addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID) //Set lights
+
+		default:  //Prøver å lage en logikk som sender ordre til executeOrder (legger til i stopArray) når det er relevant
+			//Send ordre til executeOrder hvis du er idle og har ordre i køen
+			//Eller hvis du er på vei en vei og øverste ordre skal samme vei
+			
+			//Per nu sender den ordre hvis det finnes. midlertidig. Må legges inn en algoritme som bestemmer om det skal legges til eller ikke
+
+			//switch fsm.RetrieveElevState() {
+			//case config.Idle:
+			if orderQueue[config.LocalID][0].Floor != -1 {
+				execute_chan <- orderQueue[config.LocalID][0]
+			}
+			time.Sleep(50*time.Millisecond)
+
 
 			//Add to watchdog?
 			//if new_order.button
@@ -237,8 +238,6 @@ func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.Ord
 			//assignedorder <- order_assigned
 			//case re_add_order := <-watchdog_chan:
 			//addToQueue(re_add_order, fsm.RetrieveElevState(), localID)
-
-
 		/*
 		case button_input := <-drv_buttons:   //Button input from elevator
 			//Move outside so it's not decalred multiple times?
