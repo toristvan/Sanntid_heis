@@ -121,14 +121,21 @@ func addToQueue(order_to_add <-chan config.OrderStruct, order_added chan<- confi
 //Kan evt bare slette dem med gitt retning, men er det vits?
 func RemoveOrder(floor int, id int){
 	var prev config.OrderStruct
-
-	orderQueue[id][0].Floor = -1
-	orderQueue[id][0].Button = 0
-
+	//Remove for all id's? Have to beware of cab calls.
+	for i := 0; i < queue_size; i++{
+		if  orderQueue[id][i].Floor == floor {
+			orderQueue[id][i].Floor = -1
+			orderQueue[id][i].Button = 0
+			orderQueue[id][i].ElevID = -1
+		}
+	}
 	for i := 0; i < queue_size-2 ; i++ {
 		prev = orderQueue[id][i]
 		orderQueue[id][i] = orderQueue[id][i+1]
 		orderQueue[id][i+1] = prev
+	}
+	for i := config.BT_HallUp; i <= config.BT_Cab  ; i++{ //
+		elevio.SetButtonLamp(i, floor, false) //BT syntax correct?
 	}
 
 	//for j := 0; j < queue_size; j++{
@@ -148,7 +155,7 @@ func checkIfInQueue(order config.OrderStruct) bool{
 }
 
 func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan chan<- config.OrderStruct, local_id int){
-	var lowest_cost int = 10 //maxORder
+	var lowest_cost int = 10 //max cost
 	var best_elev int =-1
 	var master bool = false
 	var port int = 20007
@@ -162,7 +169,7 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 
 	//Seems to be many unneccessary if's here
 	for{
-		ticker := time.NewTicker(100*time.Millisecond)
+		ticker := time.NewTicker(100*time.Millisecond) //Need to change this logic
 		defer ticker.Stop()
 		select{
 		case new_order = <- distr_order_chan:
@@ -242,96 +249,10 @@ func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.Ord
 
 		case order_to_add := <-add_to_queue:
 			addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID) //Set lights
-
-		default:  //Prøver å lage en logikk som sender ordre til executeOrder (legger til i stopArray) når det er relevant
-			//Send ordre til executeOrder hvis du er idle og har ordre i køen
-			//Eller hvis du er på vei en vei og øverste ordre skal samme vei
-			
-			//Per nu sender den ordre hvis det finnes. midlertidig. Må legges inn en algoritme som bestemmer om det skal legges til eller ikke
-
-			//switch fsm.RetrieveElevState() {
-			//case config.Idle:
-			if orderQueue[config.LocalID][0].Floor != -1 {
-				execute_chan <- orderQueue[config.LocalID][0]
+			if order_to_add.ElevID == config.LocalID{
+				execute_chan <- order_to_add
 			}
-			time.Sleep(50*time.Millisecond)
-
-
-			//Add to watchdog?
-			//if new_order.button
-			//broadcast_costrequest <- new_order
-			//else cabcall
-			//broadcast_cabcall
-			//addToQueue(new_order, localID)
-			//If queue added, set turnonlightchannels
-
-			//Unnecessary below?
-			//assignedorder <- order_assigned
-			//case re_add_order := <-watchdog_chan:
-			//addToQueue(re_add_order, fsm.RetrieveElevState(), localID)
-		/*
-		case button_input := <-drv_buttons:   //Button input from elevator
-			//Move outside so it's not decalred multiple times?
-			var new_order config.OrderStruct
-
-			new_order.Button = button_input.Button
-			new_order.Floor = button_input.Floor
-
-			// If Hallcall, need to allocate order
-			if (new_order.Button != config.BT_Cab){
-				new_order.Cmd = config.CostReq
-			} else{
-				new_order.Cmd = config.OrdrAdd
-			}
-			start_order <- new_order
-
-			fmt.Printf("Button input: %+v , Floor: %+v\n", new_order.Button, new_order.Floor)
-			if !checkIfInQueue(new_order){
-				addToQueue(new_order, fsm.RetrieveElevState(), localID)
-			}
-
-		case order_to_add := <- input_queue:
-			fmt.Println(order_to_add)
-			addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID)
-			//is this to add cab calls? in that case, make sure to transmit with Cmd=OrdrConf
-			//new_order.Cmd = config.OrdrConf
-			//start_order <= new__order
-			//If not, replacment for whats below?
-
-
-		default: //Blir noe trøbbel med denne
-			if orderQueue[config.LocalID][0] != prev_local_order && orderQueue[config.LocalID][0].Floor != -1 {
-				prev_local_order = orderQueue[config.LocalID][0]
-				execute_chan <- orderQueue[config.LocalID][0] //ser ut at denne kanskje blokkerer da den ikke er i bruk
-			} else {
-				time.Sleep(100*time.Millisecond)   //Unload CPU
-			}
-			*/
 		}
 	}
 }
 
-
-/*
-func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct) {
-
-	for{
-		select{
-		case order_to_add := <-input_queue:
-			fmt.Println("new order")
-			addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID)
-
-			queueIndex +=
-			if queueIndex == queue_size{
-				queueIndex = 1
-			}
-			orderQueue[input.ElevID][queueIndex].Button 		= input.Button
-			orderQueue[input.ElevID][queueIndex].Floor 			= input.Floor
-			orderQueue[input.ElevID][queueIndex].Timestamp 	= input.Timestamp
-
-			order_chan <- orderQueue[input.ElevID][queueIndex]
-
-		}
-	}
-}
-*/
