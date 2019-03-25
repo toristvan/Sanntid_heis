@@ -49,9 +49,10 @@ func main() {
 	internal_floor_chan 			:= make(chan int)
 	internal_new_order_chan 	:= make(chan config.OrderStruct)
 
-	finished := make(chan bool)
+	executed_order 						:= make(chan config.OrderStruct)
 	execute_order							:= make(chan config.OrderStruct)
 	execute_chan	  					:= make(chan config.OrderStruct) //Receives first element in queue
+	executed_chan	  					:= make(chan config.OrderStruct)
 	input_queue		  					:= make(chan config.OrderStruct)
 	start_order_chan 					:= make(chan config.OrderStruct)
 	add_order_chan 						:= make(chan config.OrderStruct)
@@ -61,8 +62,8 @@ func main() {
 	queue.InitQueue()
 
 	go IO.IOwrapper(internal_new_order_chan, internal_floor_chan)
-	go fsm.ElevStateMachine(execute_order, internal_floor_chan, finished)
-	go queue.Queue(input_queue, execute_chan)
+	go fsm.ElevStateMachine(execute_order, executed_order, internal_floor_chan)
+	go queue.Queue(input_queue, execute_chan, executed_chan)
 	go queue.DistributeOrder(start_order_chan, add_order_chan, config.LocalID)
 
 	for {
@@ -74,8 +75,9 @@ func main() {
 		case exe_ord := <- execute_chan:
 			execute_order <- exe_ord
 
-		case <- finished:
+		case order_finished := <- executed_order:
 			Println("finished")
+			executed_chan <- order_finished
 
 		/*
 		case tmp := <-execute_chan:
