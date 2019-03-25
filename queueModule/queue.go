@@ -214,7 +214,7 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 	}
 }
 
-func Queue(input_channel <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct, executed_chan <-chan config.OrderStruct) {//In channels: drv_buttons (add order) , floor reached (remove order) , costfunction. Out : push Order
+func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct) {//In channels: drv_buttons (add order) , floor reached (remove order) , costfunction. Out : push Order
 	//InitQueue()
 	//var prev_local_order config.OrderStruct
 
@@ -232,16 +232,16 @@ func Queue(input_channel <-chan config.OrderStruct, execute_chan chan<- config.O
 	//go elevio.PollButtons(drv_buttons)
 
 	for {
-		go addToQueue(order_to_add, order_added, id)
+		select{
+		case new_order := <- input_queue:
 
 			fmt.Printf("Button input: %+v , Floor: %+v\n", new_order.Button, new_order.Floor)
 			if !checkIfInQueue(new_order){
 				distr_order <- new_order
 			}
-		case finished_order := <- executed_chan:
-			RemoveOrder(finished_order.Floor, finished_order.ElevID)
-		//case order_to_add := <-add_to_queue:
-			//addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID) //Set lights
+
+		case order_to_add := <-add_to_queue:
+			addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID) //Set lights
 
 		default:  //Prøver å lage en logikk som sender ordre til executeOrder (legger til i stopArray) når det er relevant
 			//Send ordre til executeOrder hvis du er idle og har ordre i køen
@@ -306,7 +306,7 @@ func Queue(input_channel <-chan config.OrderStruct, execute_chan chan<- config.O
 			} else {
 				time.Sleep(100*time.Millisecond)   //Unload CPU
 			}
-		*/
+			*/
 		}
 	}
 }
