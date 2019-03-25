@@ -14,7 +14,7 @@ func IOwrapper(internal_new_order_chan chan<- config.OrderStruct, internal_floor
   var new_order config.OrderStruct
 
   drv_floors  := make(chan int)
-	drv_buttons := make(chan config.ButtonEvent)
+  drv_buttons := make(chan config.ButtonEvent)
 
   go elevio.PollFloorSensor(drv_floors)
   go elevio.PollButtons(drv_buttons)
@@ -22,9 +22,9 @@ func IOwrapper(internal_new_order_chan chan<- config.OrderStruct, internal_floor
   for{
     select{
       case button_input := <-drv_buttons:
-        new_order.ElevID 		= config.LocalID
-  			new_order.Button    = button_input.Button
-  			new_order.Floor     = button_input.Floor
+        new_order.ElevID    = config.LocalID
+  	new_order.Button    = button_input.Button
+  	new_order.Floor     = button_input.Floor
 
         internal_new_order_chan <- new_order
 
