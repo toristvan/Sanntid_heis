@@ -9,10 +9,10 @@ const Num_elevs int = 1
 
 type ElevStateType int
 const (
-	Idle 				ElevStateType = 0
-	GoingUp 		ElevStateType = 1
-	GoingDown 	ElevStateType = 2
-	AtFloor 		ElevStateType = 3
+	Idle		ElevStateType = 0
+	GoingUp 				= 1
+	GoingDown 	 			= 2
+	AtFloor 		 		= 3
 )
 
 type MotorDirection int
