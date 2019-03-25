@@ -218,7 +218,7 @@ func DistributeOrder(start_order_chan <-chan config.OrderStruct, add_order_chan 
 	}
 }
 
-func Queue(input_channel <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct) {//In channels: drv_buttons (add order) , floor reached (remove order) , costfunction. Out : push Order
+func Queue(input_channel <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct, executed_chan <-chan config.OrderStruct) {//In channels: drv_buttons (add order) , floor reached (remove order) , costfunction. Out : push Order
 	//InitQueue()
 	//var prev_local_order config.OrderStruct
 
@@ -253,12 +253,14 @@ func Queue(input_channel <-chan config.OrderStruct, execute_chan chan<- config.O
 				new_order.Cmd = config.OrdrAdd
 			}
 			//start_order <- new_order //ser ut at denne kanskje blokkerer da den ikke er i bruk
-
 			order_to_add <- new_order
 
 		case order_to_execute := <- order_added:
 			fmt.Println("order_to_execute", order_to_execute)
 			execute_chan <- order_to_execute
+
+		case finished_order := <- executed_chan:
+			RemoveOrder(finished_order.Floor, finished_order.ElevID)
 		//case order_to_add := <-add_to_queue:
 			//addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID) //Set lights
 
