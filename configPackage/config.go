@@ -58,15 +58,17 @@ const (
   //NewOrder  	ElevCommand = 0
   GoUp    			ElevCommand = 1
   GoDown    		ElevCommand = 2
-  FloorReached  ElevCommand = 3
+  FloorReached  	ElevCommand = 3
   Finished  		ElevCommand = 4
-  Wait          ElevCommand = 5
 )
 
 //What kind of status?
+
+/*
 type Status int
 const (
   Pending Status = 0
   Active  Status = 1
   Done    Status = 2
 )
+*/
