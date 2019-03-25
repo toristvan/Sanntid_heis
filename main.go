@@ -5,6 +5,7 @@ import (
 	"./fsmModule"
 	"./queueModule"
 	"./configPackage"
+	"./IOModule"
 	."fmt"
 )
 
@@ -39,7 +40,30 @@ func executeOrder(execute_chan <-chan config.OrderStruct, pending_orders chan<- 
 	 	}
 }
 
+func IOwrapper(internal_new_order_chan chan<- config.OrderStruct, internal_floor_chan chan<- int){
+  var new_order config.OrderStruct
 
+  drv_floors  := make(chan int)
+	drv_buttons := make(chan config.ButtonEvent)
+
+  go elevio.PollFloorSensor(drv_floors)
+  go elevio.PollButtons(drv_buttons)
+
+  for{
+			select{
+	      case button_input := <-drv_buttons:
+	        new_order.ElevID 		= config.LocalID
+	  			new_order.Button    = button_input.Button
+	  			new_order.Floor     = button_input.Floor
+	  			new_order.Cmd				= config.CostReq
+
+	        internal_new_order_chan <- new_order
+
+	      case floor_input := <- drv_floors: //kanskje unøvendig, ikke helt sikker
+	        internal_floor_chan <- floor_input
+	    }
+  }
+}
 
 func main() {
 
@@ -48,7 +72,6 @@ func main() {
 	elevio.Init("localhost:15657") //, num_floors)
 	go elevclient.RunElevator()
 	*/
-	var new_order config.OrderStruct
 
 	//var current_order config.OrderStruct //floorStatus
 	var current_floor int
@@ -61,50 +84,42 @@ func main() {
 	//status_elev_state   := make(chan config.Status)
 	//sync_elev_state     := make(chan config.Status)
 
-	drv_floors  		:= make(chan int)
-	drv_buttons 		:= make(chan config.ButtonEvent)
-
-	execute_chan	  	:= make(chan config.OrderStruct) //Receives first element in queue
-	input_queue		  	:= make(chan config.OrderStruct)
-	//start_order_chan 	:= make(chan config.OrderStruct)
-	//add_order_chan 		:= make(chan config.OrderStruct)
-
+	internal_floor_chan := make(chan int)
+	internal_new_order_chan 	:= make(chan config.OrderStruct)
+	execute_chan	  				:= make(chan config.OrderStruct) //Receives first element in queue
+	input_queue		  				:= make(chan config.OrderStruct)
+	start_order_chan 				:= make(chan config.OrderStruct)
+	add_order_chan 					:= make(chan config.OrderStruct)
 
 	current_floor = fsm.ElevatorInit()
 	Println(current_floor)
 	queue.InitQueue()
 
-	go elevio.PollFloorSensor(drv_floors)
-	go elevio.PollButtons(drv_buttons)
-
+	go IO.IOwrapper(internal_new_order_chan, internal_floor_chan)
 	go queue.Queue(input_queue, execute_chan)
-	//go queue.DistributeOrder(start_order_chan, add_order_chan, localID)
+	go queue.DistributeOrder(start_order_chan, add_order_chan, config.LocalID)
 	//start_order_chan <-chan config.OrderStruct
 	//add_order_chan chan<- config.OrderStruct
 
-	//go executeOrder(execute_chan, pending_orders)
+	// go fsm.ElevStateMachine(executeOrder)
 
 	for {
-
 		//go fsm.ElevStateMachine(status_elev_state, sync_elev_state, order_type, next_floor)
 		//go fsm.ElevInputCommand(new_command)
 
 	  select {
-	  case button_input := <-drv_buttons:
+		case floor_input := <- internal_floor_chan:
+			Println(floor_input)
+
+	  case new_order := <- internal_new_order_chan:
 			//sende ordre til andre her
-			new_order.ElevID 		 = config.LocalID
-			new_order.Button     = button_input.Button
-			new_order.Floor      = button_input.Floor
-			//new_order.Cmd					= config.OrdrAdd
 			input_queue <- new_order
 
-		//case input := <-add_order_chan:
-			//Println("received new order")
-			//input_queue <- input
+/*
+		case input := <-add_order_chan:
+			Println("received new order")
+			input_queue <- input
 
-
-
-			/*
 	  	var new_order config.OrderStruct
 	    //sende ordre til andre her
 	    new_order.Button     = button_input.Button
