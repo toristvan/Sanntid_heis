@@ -23,7 +23,7 @@ func ElevatorInit() int {
   return current_floor
 }
 
-func ElevStateMachine(execute_order <-chan config.OrderStruct, internal_floor_chan chan int, external_ready_signal chan <- bool){
+func ElevStateMachine(execute_order <-chan config.OrderStruct, executed_order chan <- config.OrderStruct, internal_floor_chan chan int){
 
   var current_order config.OrderStruct
   var elevEvent config.ButtonEvent
@@ -77,11 +77,11 @@ func ElevStateMachine(execute_order <-chan config.OrderStruct, internal_floor_ch
        current_floor = floor_input
        elevio.SetFloorIndicator(current_floor)
        if current_floor == current_order.Floor {
+
          elevio.SetButtonLamp(current_order.Button, current_floor, false)
          internal_command_chan <- config.FloorReached
-         external_ready_signal <- true
-       }else{
-         external_ready_signal <- false
+         
+         executed_order <- current_order
        }
        internal_state_sync_chan <- config.Active
 
