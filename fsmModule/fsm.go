@@ -18,7 +18,7 @@ func RetrieveElevState() config.ElevStateType{     //Any better way to do this?
   return elev_state
 }
 
-func ElevStateMachine2(new_command_chan <-chan config.ElevCommand){
+func ElevStateMachine(new_command_chan <-chan config.ElevCommand){
   elev_state = config.Idle
   for{
       select{
