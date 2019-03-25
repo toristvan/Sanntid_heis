@@ -1,8 +1,8 @@
 package watchdog
 
 import(
-  "./../queueModule"
-  "./../networkModule/bcast"
+  "../queueModule"
+  "../networkModule/bcast"
   ."fmt"
   "time"
   )
@@ -52,6 +52,6 @@ func Watchdog(retransmit chan<- config.OrderStruct, numElevs int, queueSize int)
         }
       }
     }
-    
+
   }
 }

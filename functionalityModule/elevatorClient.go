@@ -1,10 +1,10 @@
 package elevclient
 
 import (
-    "./../driverModule/elevio"
-    "./../queueModule"
-    "./../fsmModule"
-    "./../configPackage"
+    "../driverModule/elevio"
+    "../queueModule"
+    "../fsmModule"
+    "../configPackage"
     //."fmt"
 	  //"time"
 )
@@ -81,7 +81,7 @@ func RunElevator(){
     //go elevio.PollButtons(drv_buttons)
     //go elevio.PollObstructionSwitch(drv_obstr)
 	  //go elevio.PollStopButton(drv_stop)
-	  
+
     go fsm.ElevStateMachine(status_elev_state, sync_elev_state, order_type, next_floor)
     go fsm.ElevInputCommand(new_command)
     go queue.Queue(input_queue, execute_chan)
@@ -148,7 +148,7 @@ func RunElevator(){
           	} else if current_floor < current_order.Floor && fsm.RetrieveElevState() == config.GoingUp {   //These two can be merged.
             	//Retransmit/reassign order
             } else if current_floor > current_order.Floor && fsm.RetrieveElevState() == config.GoingDown {  //Readability tho?
-            	//Retransmit/reassign order 
+            	//Retransmit/reassign order
             }
           	sync_elev_state <- config.Active
 
@@ -170,7 +170,7 @@ func RunElevator(){
 */
 
 func ElevRunner(){
-  
+
   var current_floor int
   //var current_dir config.MotorDirection
   //var prev_dir config.MotorDirection
@@ -199,11 +199,11 @@ func ElevRunner(){
       current_floor = new_floor
       if stopArray[new_floor].stop{
         //Stop routine
-        elev_cmd_chan <- config.FloorReached 
+        elev_cmd_chan <- config.FloorReached
         stopArray[new_floor].stop = false
       }
       elevio.SetFloorIndicator(current_floor)
-      
+
       switch prev_state{
       case config.GoingUp:
         if !isEmpty(stopArray, current_floor, elevio.Num_floors){

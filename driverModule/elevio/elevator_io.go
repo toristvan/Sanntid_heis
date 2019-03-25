@@ -1,7 +1,7 @@
 package elevio
 
 import (
-	"./../../configPackage"
+	"../../configPackage"
 	"time"
 	"sync"
 	"net"
@@ -33,7 +33,7 @@ func Init(addr string) { //numFloors int) {
 
 	for i := 0; i < 3; i++ {
 		for j := 0; j < Num_floors; j++ {
-			SetButtonLamp(config.ButtonType(i), j, false)	
+			SetButtonLamp(config.ButtonType(i), j, false)
 		}
 	}
 }

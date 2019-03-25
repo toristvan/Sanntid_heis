@@ -1,8 +1,8 @@
 package fsm
 
 import(
-  "./../configPackage"
-  "./../driverModule/elevio"
+  "../configPackage"
+  "../driverModule/elevio"
   ."fmt"
   "time"
 )
@@ -19,7 +19,7 @@ func ElevatorInit() int {
   elevio.Init("localhost:15657")
   elev_state = config.Idle
   current_floor = elevio.Num_floors + 1 //Why?
-  //current_floor = 
+  //current_floor =
   Println("Ready")
 
   return current_floor
@@ -105,9 +105,9 @@ func ElevStateMachine2(new_command_chan <-chan config.ElevCommand, current_state
   for{
       select{
       case new_cmd := <-new_command_chan:
-        
+
         switch new_cmd{
-        
+
         case config.GoUp:
           elevio.SetMotorDirection(config.MD_Up)
           *current_state = config.GoingUp
@@ -125,7 +125,7 @@ func ElevStateMachine2(new_command_chan <-chan config.ElevCommand, current_state
 
         case config.Finished:
           *current_state = config.Idle
-         
+
         case config.Wait:
 
         }

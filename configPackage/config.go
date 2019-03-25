@@ -4,6 +4,8 @@ import (
 	"time"
 )
 
+const LocalID int = 0
+const Num_elevs int = 1
 
 type ElevStateType int
 const (
@@ -14,7 +16,6 @@ const (
 )
 
 type MotorDirection int
-
 const (
 	MD_Up   MotorDirection = 1
 	MD_Down                = -1
@@ -22,7 +23,6 @@ const (
 )
 
 type ButtonType int
-
 const (
 	BT_HallUp   ButtonType = 0
 	BT_HallDown            = 1
@@ -44,23 +44,22 @@ type OrderStruct struct
 	Cmd OrderCommand
 }
 
-type OrderCommand int 
-
+type OrderCommand int
 const (
-	CostReq 	OrderCommand = 0
-	CostSend 	OrderCommand = 1
+	CostReq 		OrderCommand = 0
+	CostSend 		OrderCommand = 1
 	OrdrAssign 	OrderCommand = 2
-	OrdrAdd 	OrderCommand = 3
-	OrdrConf 	OrderCommand = 4
+	OrdrAdd 		OrderCommand = 3
+	OrdrConf 		OrderCommand = 4
 )
 
 type ElevCommand int
 const (
   //NewOrder  	ElevCommand = 0
-  GoUp    		ElevCommand = 1
-  GoDown    	ElevCommand = 2
+  GoUp    			ElevCommand = 1
+  GoDown    		ElevCommand = 2
   FloorReached  ElevCommand = 3
-  Finished  	ElevCommand = 4
+  Finished  		ElevCommand = 4
   Wait          ElevCommand = 5
 )
 
