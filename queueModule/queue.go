@@ -59,10 +59,10 @@ func insertToQueue(order config.OrderStruct, index int, id int){
 //Replace with motordir?
 // Make sure lights are only set when we know order will be executed
 // For example, when added to queue.
+/*
 func addToQueue(order config.OrderStruct, current_dir config.ElevStateType ,id int) {          //ElevStateType must be elecatorClient package
 
 	//fmt.Printf("%+v\n", order)
-
 	if orderQueue[id][0].Floor == -1{
 		insertToQueue(order, 0, id)
 	} else if current_dir == config.GoingUp {
@@ -81,11 +81,44 @@ func addToQueue(order config.OrderStruct, current_dir config.ElevStateType ,id i
 			}
 		}
 	}
+
 	for j := 0; j < queue_size; j++{
 		fmt.Printf("Order added. Current queue: %+v\n", orderQueue[id][j])
 	}
-
 }
+*/
+
+func addToQueue(order_to_add <-chan config.OrderStruct, order_added chan<- config.OrderStruct, id int){
+	current_dir := fsm.RetrieveElevState()
+	select{
+	case order := <- order_to_add:
+		if !checkIfInQueue(order){
+			if orderQueue[id][0].Floor == -1{
+				insertToQueue(order, 0, id)
+			} else if current_dir == config.GoingUp {
+				if order.Floor < orderQueue[id][0].Floor {
+					insertToQueue(order, 0, id)
+				}
+			} else if current_dir == config.GoingDown {
+				if order.Floor > orderQueue[id][0].Floor {
+					insertToQueue(order, 0, id)
+				}
+			} else {
+				for i := 0; i < queue_size; i++{
+					if orderQueue[id][i].Floor == -1 {
+						orderQueue[id][i] = order
+						break
+					}
+				}
+			}
+			for j := 0; j < queue_size; j++{
+				fmt.Printf("Order added. Current queue: %+v\n", orderQueue[id][j])
+			}
+			order_added <- orderQueue[id][0]
+		}
+	}
+}
+
 
 //Sletter alle ordre med oppgitt etasje i.
 //Kan evt bare slette dem med gitt retning, men er det vits?
@@ -105,7 +138,6 @@ func RemoveOrder(floor int, id int){
 		fmt.Printf("Order removed. \n New order queue: %+v\n", orderQueue[id][j])
 	}
 }
-
 
 func checkIfInQueue(order config.OrderStruct) bool{
 	for i := 0; i < num_elevs; i++ {
@@ -186,12 +218,15 @@ func DistributeOrder(start_order_chan <-chan config.OrderStruct, add_order_chan 
 	}
 }
 
-
-func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct) {//In channels: drv_buttons (add order) , floor reached (remove order) , costfunction. Out : push Order
+func Queue(input_channel <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct) {//In channels: drv_buttons (add order) , floor reached (remove order) , costfunction. Out : push Order
 	//InitQueue()
 	//var prev_local_order config.OrderStruct
 
-	add_to_queue := make(chan config.OrderStruct)
+	var id int
+
+	order_to_add 	:= make(chan config.OrderStruct)
+	order_added 	:= make(chan config.OrderStruct)
+	//add_to_queue 	:= make(chan config.OrderStruct)
 	//start_order := make(chan config.OrderStruct)
 	//watchdog_chan := make(chan config.OrderStruct)
 
@@ -206,9 +241,11 @@ func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.Ord
 	//go elevio.PollButtons(drv_buttons)
 
 	for {
-		select{
-		case new_order := <- input_queue:
+		go addToQueue(order_to_add, order_added, id)
 
+		select{
+		case new_order := <- input_channel:
+			id = new_order.ElevID
 			// If Hallcall, need to allocate order
 			if (new_order.Button != config.BT_Cab){
 				new_order.Cmd = config.CostReq
@@ -217,13 +254,13 @@ func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.Ord
 			}
 			//start_order <- new_order //ser ut at denne kanskje blokkerer da den ikke er i bruk
 
-			fmt.Printf("Button input: %+v , Floor: %+v\n", new_order.Button, new_order.Floor)
-			if !checkIfInQueue(new_order){
-				addToQueue(new_order, fsm.RetrieveElevState(), config.LocalID)
-			}
+			order_to_add <- new_order
 
-		case order_to_add := <-add_to_queue:
-			addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID) //Set lights
+		case order_to_execute := <- order_added:
+			fmt.Println("order_to_execute", order_to_execute)
+			execute_chan <- order_to_execute
+		//case order_to_add := <-add_to_queue:
+			//addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID) //Set lights
 
 			//Add to watchdog?
 			//if new_order.button
@@ -276,7 +313,7 @@ func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.Ord
 			} else {
 				time.Sleep(100*time.Millisecond)   //Unload CPU
 			}
-			*/
+		*/
 		}
 	}
 }
