@@ -34,16 +34,13 @@ func initStopArray(){
 
 //var index = 1
 
-func  isEmpty(arr [elevio.Num_floors]floorStatus, from int, to int) bool{
-  if to == from && arr[to].stop{
-    return false
-  }
-  for i := from ; i < to ; i++{
-    if arr[i].stop {
-      return false
-    }
-  }
-  return true
+func isEmpty(arr [elevio.Num_floors]floorStatus, from int, to int) bool{
+  	for i := from ; i < to ; i++{
+    	if arr[i].stop {
+      	return false
+    	}
+  	}
+  	return true
 }
 
 //An alert function which sends alert when elevator is idle when stopArray is not empty
@@ -116,7 +113,7 @@ func ElevRunner(){
   //var prev_dir config.MotorDirection
   //var current_state config.ElevStateType = config.Idle
   //fsm.RetrieveState()
-  //var prev_state config.ElevStateType = config.Idle
+  var prev_state config.ElevStateType = config.Idle
 
 
   floor_chan  := make (chan int)
@@ -134,7 +131,7 @@ func ElevRunner(){
   for{
     select{
     case new_floor := <- floor_chan:
-      //prev_state = fsm.RetrieveElevState()      
+      prev_state = fsm.RetrieveElevState()      
       current_floor = new_floor
       if stopArray[new_floor].stop{
         //Stop routine
@@ -146,19 +143,19 @@ func ElevRunner(){
         fmt.Println(stopArray)
       }
       elevio.SetFloorIndicator(current_floor)
-      /*
+      
       switch prev_state{
         case config.GoingUp:
           if !isEmpty(stopArray, current_floor+1, elevio.Num_floors){
             fmt.Println(prev_state)
             elev_cmd_chan <- config.GoUp
-          } else if !isEmpty(stopArray, elevio.Ground_floor, current_floor-1){
+          } else if !isEmpty(stopArray, elevio.Ground_floor, current_floor){
             elev_cmd_chan <- config.GoDown
           } else{
             elev_cmd_chan <- config.Finished
           }
         case config.GoingDown:
-          if !isEmpty(stopArray, elevio.Ground_floor, current_floor-1){
+          if !isEmpty(stopArray, elevio.Ground_floor, current_floor){
             elev_cmd_chan <- config.GoDown
           } else if !isEmpty(stopArray, current_floor+1, elevio.Num_floors){
             elev_cmd_chan <- config.GoUp
@@ -166,144 +163,28 @@ func ElevRunner(){
             elev_cmd_chan <- config.Finished
           }
         }
-        */
+        
 
     case <- alert_chan:       //Channel dedicated to alert if elevator is idle with orders in stopArray
-      if !isEmpty(stopArray, elevio.Ground_floor, current_floor-1){
-        elev_cmd_chan <- config.GoDown
-      } else if !isEmpty(stopArray, current_floor+1, elevio.Num_floors){
-        elev_cmd_chan <- config.GoUp
-      } else if !isEmpty(stopArray, current_floor, current_floor){
-        elev_cmd_chan <- config.FloorReached
-        stopArray[current_floor].stop = false
-        //Turn off lights should be in RemoveArray instead
-        for i := 0; i < 3; i++ {
-          elevio.SetButtonLamp(config.ButtonType(i), current_floor, false)  //Switch off all lights associated with floor
-        }
-      } else {
-        elev_cmd_chan <- config.Finished
-      }
+     	if stopArray[current_floor].stop {
+	        elev_cmd_chan <- config.FloorReached
+	        fmt.Println("3")
+	        stopArray[current_floor].stop = false
+	        //Turn off lights should be in RemoveArray instead
+	        for i := 0; i < 3; i++ {
+	          elevio.SetButtonLamp(config.ButtonType(i), current_floor, false)  //Switch off all lights associated with floor
+	        }
+	        elev_cmd_chan <- config.Finished
+	    } else if !isEmpty(stopArray, elevio.Ground_floor, current_floor){
+        	elev_cmd_chan <- config.GoDown
+        	fmt.Println("1")
+      	} else if !isEmpty(stopArray, current_floor+1, elevio.Num_floors){
+        	elev_cmd_chan <- config.GoUp
+        	fmt.Println("2")
+      	} else {
+      		fmt.Println("4")
+        	elev_cmd_chan <- config.Finished
+      	}
     }
   }
 }
-
-
-/*
-func RunElevator(){
-
-    var current_order config.OrderStruct //floorStatus
-    var current_floor int
-
-    var elevEvent config.ButtonEvent
-    next_floor := elevEvent.Floor
-    order_type := elevEvent.Button
-
-
-    new_command         := make(chan config.ElevCommand)
-    status_elev_state   := make(chan config.Status)
-    sync_elev_state     := make(chan config.Status)
-
-    drv_floors  := make(chan int)
-    //drv_buttons := make(chan config.ButtonEvent)
-    //drv_obstr   := make(chan bool)
-    //drv_stop    := make(chan bool)
-
-    execute_chan	  := make(chan config.OrderStruct) //Receives first element in queue
-    input_queue		  := make(chan config.OrderStruct)
-    pending_orders  := make(chan floorStatus, 5) //Why 5?
-
-    current_floor = fsm.ElevatorInit()
-    queue.InitQueue()
-
-    go elevio.PollFloorSensor(drv_floors)
-    //go elevio.PollButtons(drv_buttons)
-    //go elevio.PollObstructionSwitch(drv_obstr)
-	  //go elevio.PollStopButton(drv_stop)
-
-    go fsm.ElevStateMachine(status_elev_state, sync_elev_state, order_type, next_floor)
-    go fsm.ElevInputCommand(new_command)
-    go queue.Queue(input_queue, execute_chan)
-    go executeOrder(execute_chan, pending_orders)
-
-    for {
-
-      	select {
-        //Why is this here?
-      	case button_input := <-drv_buttons:
-        	var new_order config.OrderStruct
-          	//sende ordre til andre her
-    		  new_order.Button     = button_input.Button
-    		  new_order.Floor      = button_input.Floor
-        	new_order.Cost       = dummyCostFunc(button_input.Button, button_input.Floor)
-          new_order.ElevID     = localID
-        	new_order.Timestamp  = time.Now()
-    		  input_queue <- new_order
-      	case execute_order := <- pending_orders:
-        	next_floor    = execute_order.Floor
-        	order_type    = execute_order.Button
-        	current_order = execute_order
-
-	        //Add to watchdog here
-	  		elevio.SetButtonLamp(order_type, next_floor, true)
-
-
-	        switch order_type {
-	        case config.BT_HallUp, config.BT_HallDown:
-	            Println("Hall call")
-	            Println("Floor:", current_order.Floor)
-
-	            if next_floor < current_floor{
-	              new_command <- config.GoDown
-	            } else if next_floor > current_floor {
-	              new_command <- config.GoUp
-	            } else {
-	              new_command <- config.FloorReached
-	            }
-	        case config.BT_Cab:
-	            Println("Cab call")
-	            Println("Floor:", current_order.Floor)
-
-	            if next_floor < current_floor{
-	              	new_command <- config.GoDown
-	            } else if next_floor > current_floor {
-	              	new_command <- config.GoUp
-	            } else {
-	              	new_command <- config.FloorReached
-	            }
-	        }
-
-	        sync_elev_state <- config.Active
-
-      	case floor_input := <- drv_floors:
-
-          	current_floor = floor_input
-          	elevio.SetFloorIndicator(current_floor)
-
-          	if current_floor == current_order.Floor {
-              	elevio.SetButtonLamp(current_order.Button, current_floor, false)
-                //queue.RemoveOrder(current_floor, localID)
-              	new_command <- config.FloorReached
-          	} else if current_floor < current_order.Floor && fsm.RetrieveElevState() == config.GoingUp {   //These two can be merged.
-            	//Retransmit/reassign order
-            } else if current_floor > current_order.Floor && fsm.RetrieveElevState() == config.GoingDown {  //Readability tho?
-            	//Retransmit/reassign order
-            }
-          	sync_elev_state <- config.Active
-
-      	case current_status := <- status_elev_state:
-
-          	switch current_status {
-          	case config.Pending:
-              	sync_elev_state <- config.Done
-          	case config.Active:
-              	sync_elev_state <- config.Pending
-          	case config.Done:
-              	sync_elev_state <- config.Active
-          	}
-
-      	}
-
-    }
-}
-*/
-
