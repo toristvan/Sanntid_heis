@@ -34,7 +34,7 @@ func (wtd *WatchdogTimer) timeOut() bool{
 }
 */
 func timeout (order *orderStruct) bool{
-  return time.Since(order.startTime)>length;
+  return time.Since(order.Timestamp)>length;
 }
 
 func Watchdog(retransmit chan<- config.OrderStruct, numElevs int, queueSize int){
