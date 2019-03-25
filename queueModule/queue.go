@@ -84,6 +84,39 @@ func addToQueue(order config.OrderStruct, current_dir config.ElevStateType , id 
 
 }
 
+/*
+func addToQueue(order_to_add <-chan config.OrderStruct, order_added chan<- config.OrderStruct, id int){
+	current_dir := fsm.RetrieveElevState()
+	select{
+	case order := <- order_to_add:
+		if !checkIfInQueue(order){
+			if orderQueue[id][0].Floor == -1{
+				insertToQueue(order, 0, id)
+			} else if current_dir == config.GoingUp {
+				if order.Floor < orderQueue[id][0].Floor {
+					insertToQueue(order, 0, id)
+				}
+			} else if current_dir == config.GoingDown {
+				if order.Floor > orderQueue[id][0].Floor {
+					insertToQueue(order, 0, id)
+				}
+			} else {
+				for i := 0; i < queue_size; i++{
+					if orderQueue[id][i].Floor == -1 {
+						orderQueue[id][i] = order
+						break
+					}
+				}
+			}
+			for j := 0; j < queue_size; j++{
+				fmt.Printf("Order added. Current queue: %+v\n", orderQueue[id][j])
+			}
+			order_added <- orderQueue[id][0]
+		}
+	}
+}
+*/
+
 //Sletter alle ordre med oppgitt etasje i.
 //Kan evt bare slette dem med gitt retning, men er det vits?
 func RemoveOrder(floor int, id int){
@@ -102,7 +135,6 @@ func RemoveOrder(floor int, id int){
 		fmt.Printf("Order removed from queue")
 	//}
 }
-
 
 func checkIfInQueue(order config.OrderStruct) bool{
 	for i := 0; i < num_elevs; i++ {
@@ -182,8 +214,7 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 	}
 }
 
-
-func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct) {//In channels: drv_buttons (add order) , floor reached (remove order) , costfunction. Out : push Order
+func Queue(input_channel <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct, executed_chan <-chan config.OrderStruct) {//In channels: drv_buttons (add order) , floor reached (remove order) , costfunction. Out : push Order
 	//InitQueue()
 	//var prev_local_order config.OrderStruct
 
@@ -201,16 +232,16 @@ func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.Ord
 	//go elevio.PollButtons(drv_buttons)
 
 	for {
-		select{
-		case new_order := <- input_queue:
+		go addToQueue(order_to_add, order_added, id)
 
 			fmt.Printf("Button input: %+v , Floor: %+v\n", new_order.Button, new_order.Floor)
 			if !checkIfInQueue(new_order){
 				distr_order <- new_order
 			}
-
-		case order_to_add := <-add_to_queue:
-			addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID) //Set lights
+		case finished_order := <- executed_chan:
+			RemoveOrder(finished_order.Floor, finished_order.ElevID)
+		//case order_to_add := <-add_to_queue:
+			//addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID) //Set lights
 
 		default:  //Prøver å lage en logikk som sender ordre til executeOrder (legger til i stopArray) når det er relevant
 			//Send ordre til executeOrder hvis du er idle og har ordre i køen
@@ -275,7 +306,7 @@ func Queue(input_queue <-chan config.OrderStruct, execute_chan chan<- config.Ord
 			} else {
 				time.Sleep(100*time.Millisecond)   //Unload CPU
 			}
-			*/
+		*/
 		}
 	}
 }
