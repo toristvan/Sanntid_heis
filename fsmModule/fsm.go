@@ -3,7 +3,7 @@ package fsm
 import(
   "../configPackage"
   "../driverModule/elevio"
-  ."fmt"
+  "fmt"
   "time"
 )
 
@@ -12,17 +12,50 @@ import(
 
 var elev_state config.ElevStateType
 var new_command config.ElevCommand
-var current_floor int
 
-func ElevatorInit() int {
-  elevio.Init("localhost:15657")
-  elev_state = config.Idle
-  current_floor = elevio.Num_floors + 1 //Why? because of reasons
-  //current_floor =
-  Println("Ready")
-  return current_floor
+//elev_state is no longer updated? Should use current_state instead?
+func RetrieveElevState() config.ElevStateType{     //Any better way to do this?
+  return elev_state
 }
 
+func ElevStateMachine2(new_command_chan <-chan config.ElevCommand){
+  elev_state = config.Idle
+  for{
+      select{
+      case new_cmd := <-new_command_chan:
+        fmt.Println("new command")
+        switch new_cmd{
+
+        case config.GoUp:
+          elevio.SetMotorDirection(config.MD_Up)
+          elev_state = config.GoingUp            //fjern hvis unødvendig, hør med Tor
+          fmt.Println("Going up")
+        case config.GoDown:
+          elevio.SetMotorDirection(config.MD_Down)
+          elev_state = config.GoingDown            //fjern hvis unødvendig, hør med Tor
+          fmt.Println("Going down")
+        case config.FloorReached:
+          elevio.SetMotorDirection(config.MD_Stop)
+          elev_state = config.AtFloor           //fjern hvis unødvendig, hør med Tor
+          fmt.Println("At floor")
+          elevio.SetDoorOpenLamp(true)
+          time.Sleep(3000*time.Millisecond)
+          elevio.SetDoorOpenLamp(false)
+          //elev_state = config.Idle
+
+        case config.Finished:
+          elev_state = config.Idle          //fjern hvis unødvendig, hør med Tor
+          fmt.Println("Idle")
+        case config.Wait:
+
+        }
+    }
+
+  }
+}
+
+
+/*
 func ElevStateMachine(execute_order <-chan config.OrderStruct, internal_floor_chan chan int){
 
   var current_order config.OrderStruct
@@ -34,9 +67,11 @@ func ElevStateMachine(execute_order <-chan config.OrderStruct, internal_floor_ch
   internal_state_status_chan   := make(chan config.Status)
   internal_state_sync_chan     := make(chan config.Status)
 
+  go ElevSelectState(internal_state_status_chan, internal_state_sync_chan, order_type, next_floor)
+  go ElevInputCommand(internal_command_chan)
+
   for{
-    go ElevSelectState(internal_state_status_chan, internal_state_sync_chan, order_type, next_floor)
-		go ElevInputCommand(internal_command_chan)
+    
 
     select{
     case exe_ord := <- execute_order:
@@ -94,19 +129,18 @@ func ElevStateMachine(execute_order <-chan config.OrderStruct, internal_floor_ch
     }
   }
 }
-
+*/
 // Move to elev state machine
+/*
 func ElevInputCommand(internal_command_chan <-chan config.ElevCommand){
   select{
   case new_cmd :=  <-command:
     new_command = new_cmd
   }
 }
+*/
 
-func RetrieveElevState() config.ElevStateType{     //Any better way to do this?
-  return elev_state
-}
-
+/*
 func ElevSelectState(status_elev_state chan <- config.Status, sync_elev_state <- chan config.Status, button config.ButtonType, floor int){
 
     select{
@@ -168,37 +202,4 @@ func ElevSelectState(status_elev_state chan <- config.Status, sync_elev_state <-
       }
     }
 }
-
-func ElevStateMachine2(new_command_chan <-chan config.ElevCommand, current_state *config.ElevStateType){
-  for{
-      select{
-      case new_cmd := <-new_command_chan:
-
-        switch new_cmd{
-
-        case config.GoUp:
-          elevio.SetMotorDirection(config.MD_Up)
-          *current_state = config.GoingUp
-        case config.GoDown:
-          elevio.SetMotorDirection(config.MD_Down)
-          *current_state = config.GoingDown
-
-        case config.FloorReached:
-          elevio.SetMotorDirection(config.MD_Stop)
-          *current_state = config.AtFloor
-          elevio.SetDoorOpenLamp(true)
-          time.Sleep(3000*time.Millisecond)
-          elevio.SetDoorOpenLamp(false)
-          //current_state = config.Idle
-
-        case config.Finished:
-          *current_state = config.Idle
-
-        case config.Wait:
-
-        }
-
-    }
-
-  }
-}
+*/
