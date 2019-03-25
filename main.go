@@ -84,33 +84,27 @@ func main() {
 	//status_elev_state   := make(chan config.Status)
 	//sync_elev_state     := make(chan config.Status)
 
-	internal_floor_chan := make(chan int)
+	internal_floor_chan 			:= make(chan int)
 	internal_new_order_chan 	:= make(chan config.OrderStruct)
-	execute_chan	  				:= make(chan config.OrderStruct) //Receives first element in queue
-	input_queue		  				:= make(chan config.OrderStruct)
-	start_order_chan 				:= make(chan config.OrderStruct)
-	add_order_chan 					:= make(chan config.OrderStruct)
+
+	execute_order	:= make(chan config.OrderStruct)
+
+	execute_chan	  					:= make(chan config.OrderStruct) //Receives first element in queue
+	input_queue		  					:= make(chan config.OrderStruct)
+	start_order_chan 					:= make(chan config.OrderStruct)
+	add_order_chan 						:= make(chan config.OrderStruct)
 
 	current_floor = fsm.ElevatorInit()
 	Println(current_floor)
 	queue.InitQueue()
 
 	go IO.IOwrapper(internal_new_order_chan, internal_floor_chan)
+	go fsm.ElevStateMachine(execute_order, internal_floor_chan)
 	go queue.Queue(input_queue, execute_chan)
 	go queue.DistributeOrder(start_order_chan, add_order_chan, config.LocalID)
-	//start_order_chan <-chan config.OrderStruct
-	//add_order_chan chan<- config.OrderStruct
-
-	// go fsm.ElevStateMachine(executeOrder)
 
 	for {
-		//go fsm.ElevStateMachine(status_elev_state, sync_elev_state, order_type, next_floor)
-		//go fsm.ElevInputCommand(new_command)
-
 	  select {
-		case floor_input := <- internal_floor_chan:
-			Println(floor_input)
-
 	  case new_order := <- internal_new_order_chan:
 			//sende ordre til andre her
 			input_queue <- new_order

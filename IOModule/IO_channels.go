@@ -10,7 +10,7 @@ Bruke tanken: lage funksjoner som gjør en ting og en ting bra. Blir to ting i d
 Distrubiering av knappetrykk fra en plass og setter dette sammen til en OrderStruct
 */
 
-func IOwrapper(internal_new_order_chan chan<- config.OrderStruct, internal_floor_chan chan<- int){
+func IOwrapper(internal_new_order_chan chan<- config.OrderStruct, internal_floor_chan chan int){
   var new_order config.OrderStruct
 
   drv_floors  := make(chan int)
