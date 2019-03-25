@@ -9,7 +9,7 @@ import (
 )
 
 const _pollRate = 20 * time.Millisecond
-const Ground_floor int = 1 //Necessary?
+const Ground_floor int = 0 //Necessary?
 const Num_floors int = 4
 
 var _initialized bool = false
@@ -36,9 +36,11 @@ func Init(addr string) { //numFloors int) {
 			SetButtonLamp(config.ButtonType(i), j, false)
 		}
 	}
+
 }
 
 func SetMotorDirection(dir config.MotorDirection) {
+	fmt.Println("Setting dir", dir)
 	_mtx.Lock()
 	defer _mtx.Unlock()
 	_conn.Write([]byte{1, byte(dir), 0, 0})
