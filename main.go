@@ -41,28 +41,28 @@ func executeOrder(execute_chan <-chan config.OrderStruct, pending_orders chan<- 
 }
 
 func IOwrapper(internal_new_order_chan chan<- config.OrderStruct, internal_floor_chan chan<- int){
-  var new_order config.OrderStruct
+	var new_order config.OrderStruct
 
-  drv_floors  := make(chan int)
+	drv_floors  := make(chan int)
 	drv_buttons := make(chan config.ButtonEvent)
 
-  go elevio.PollFloorSensor(drv_floors)
-  go elevio.PollButtons(drv_buttons)
+	go elevio.PollFloorSensor(drv_floors)
+	go elevio.PollButtons(drv_buttons)
 
-  for{
-			select{
-	      case button_input := <-drv_buttons:
-	        new_order.ElevID 		= config.LocalID
-	  			new_order.Button    = button_input.Button
-	  			new_order.Floor     = button_input.Floor
-	  			new_order.Cmd				= config.CostReq
+	for{
+		select{
+		case button_input := <-drv_buttons:
+		    new_order.ElevID 	= config.LocalID
+			new_order.Button    = button_input.Button
+			new_order.Floor     = button_input.Floor
+			new_order.Cmd		= config.CostReq
 
-	        internal_new_order_chan <- new_order
+		    internal_new_order_chan <- new_order
 
-	      case floor_input := <- drv_floors: //kanskje unøvendig, ikke helt sikker
-	        internal_floor_chan <- floor_input
+	    case floor_input := <- drv_floors: //kanskje unøvendig, ikke helt sikker
+	    	internal_floor_chan <- floor_input
 	    }
-  }
+	}
 }
 
 func main() {
