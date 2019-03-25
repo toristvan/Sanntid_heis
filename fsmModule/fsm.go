@@ -14,6 +14,7 @@ var elev_state config.ElevStateType
 var new_command config.ElevCommand
 
 //elev_state is no longer updated? Should use current_state instead?
+//Call it behaviour
 func RetrieveElevState() config.ElevStateType{     //Any better way to do this?
   return elev_state
 }
@@ -42,12 +43,9 @@ func ElevStateMachine(new_command_chan <-chan config.ElevCommand){
           time.Sleep(3000*time.Millisecond)
           elevio.SetDoorOpenLamp(false)
           //elev_state = config.Idle
-
         case config.Finished:
           elev_state = config.Idle          //fjern hvis unødvendig, hør med Tor
           fmt.Println("Idle")
-        case config.Wait:
-
         }
     }
 
