@@ -8,7 +8,7 @@ import (
 	"fmt"
 )
 
-const _pollRate = 20 * time.Millisecond
+const _pollRate = 50 * time.Millisecond
 const Ground_floor int = 0 //Necessary?
 const Num_floors int = 4
 

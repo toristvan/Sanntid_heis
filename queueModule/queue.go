@@ -135,48 +135,29 @@ func checkIfInQueue(order config.OrderStruct) bool{
 }
 
 func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan chan<- config.OrderStruct, delete_order_chan <-chan config.OrderStruct /*, trans_main_chan chan<- config.OrderStruct, rec_main_chan <-chan config.OrderStruct,*/){
-	var lowest_cost int = 10 //max cost
-	var best_elev int 	=-1
 	var port int 		= 20007
 	var new_order config.OrderStruct
 
 	trans_order_chan	:= make (chan config.OrderStruct)
-	rec_order_chan		:= make (chan config.OrderStruct)
-	trans_conf_chan		:= make (chan config.OrderStruct)
 	offline_alert 		:= make (chan bool)
 
-	go bcast.Receiver(port,rec_order_chan)
 	go bcast.Transmitter(port, offline_alert, trans_order_chan)
-	go bcast.Transmitter(port, offline_alert, trans_conf_chan)  //La inn egen channel for å sende fra Receiverenden, slik at de ikke krasjer. Dårlig løsning?
-	//Seems to be many unneccessary if's here
+
+	//Make order chan bigger, so not freeze as easily?
 	for{
 		ticker := time.NewTicker(100*time.Millisecond) //Need to change this logic
 		defer ticker.Stop()
 		select{
 		case new_order = <- distr_order_chan:
-			fmt.Println("distr_order_chan fetched")
 			switch new_order.Cmd{
 			case config.CostReq:
 				new_order.Cmd = config.CostSend
-				master = true
-				//trans_main_chan <- new_order
 				trans_order_chan <- new_order
-				fmt.Println("trans_order_chan written to 1")
 			case config.OrdrAdd:
 				add_order_chan <- new_order
 				new_order.Cmd = config.OrdrConf
 				new_order.Cost = -1 //cabcall
-				//trans_main_chan <- new_order
 				trans_order_chan <- new_order
-				fmt.Println("trans_order_chan written to 2")
-
-				/*
-			case config.OrdrDelete:
-				//Will have LocalID
-				fmt.Println("Deleting order")
-				trans_order_chan <- new_order
-				fmt.Println("Order sent for deletion")
-				*/
 			}
 		case new_order = <- delete_order_chan:
 			if new_order.Cmd == config.OrdrDelete{
@@ -186,52 +167,8 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 			} else {
 				fmt.Println("Wrong command")
 			}
-
-		case new_order = <-rec_order_chan:
-			fmt.Println("rec_order_chan fetched")
-
-			switch new_order.Cmd{
-			case config.CostSend:
-				new_order.Cost = dummyCostFunc(new_order)//Current CF requires currentfloor and direction. How to fix
-				new_order.ElevID = config.LocalID
-				new_order.Cmd = config.OrdrAssign
-				//trans_main_chan <- new_order
-				trans_conf_chan <- new_order //transmit order cost
-				fmt.Println("trans_conf_chan written to")
-
-			case config.OrdrAssign:
-				if new_order.MasterID == config.LocalID && new_order.Cost < lowest_cost{
-					lowest_cost = new_order.Cost
-					best_elev = new_order.ElevID
-					fmt.Println("best_elev", best_elev)
-				}
-			case config.OrdrAdd:
-				if new_order.ElevID == config.LocalID{
-					add_order_chan <- new_order //add order to queue
-					new_order.Cmd = config.OrdrConf
-					//trans_main_chan <- new_order
-					trans_conf_chan <- new_order //transmit order confirmation
-				}
-			case config.OrdrConf:
-				if new_order.ElevID != config.LocalID{
-					add_order_chan <- new_order
-				}
-			case config.OrdrDelete:
-				if new_order.ElevID != config.LocalID {
-					RemoveOrder(new_order.Floor, new_order.ElevID)
-				}
-			}
 		case <- offline_alert:           //To retrieve any offlinemessages blocking. Find better solution
-		case <- ticker.C:
-			if master {
-				new_order.ElevID = best_elev
-				new_order.Cost = lowest_cost
-				new_order.Cmd = config.OrdrAdd
-				trans_conf_chan <- new_order //transmit new order
-				master = false
-				lowest_cost = 10 //maxcost
-				best_elev = -1
-			}
+			fmt.Printf("offlinemessages\n")
 		}
 	}
 }
@@ -244,52 +181,52 @@ func SlaveDistribution(add_order_chan chan<- config.OrderStruct){
 	var best_elev int 	=-1
 	var master bool 	= false
 	var port int 		= 20007
+	var new_order config.OrderStruct
 
 	rec_order_chan		:= make (chan config.OrderStruct)
 	trans_conf_chan		:= make (chan config.OrderStruct)
 	offline_alert 		:= make (chan bool)
 
-	go bcast.Receiver(port,rec_order_chan)
+	go bcast.Receiver(port, rec_order_chan)
 	go bcast.Transmitter(port, offline_alert, trans_conf_chan)  //La inn egen channel for å sende fra Receiverenden, slik at de ikke krasjer. Dårlig løsning?
 	for {
 		ticker := time.NewTicker(100*time.Millisecond) //Need to change this logic
 		select{
-			case new_order = <-rec_order_chan:
-			fmt.Println("rec_order_chan fetched")
+		case new_order = <-rec_order_chan:
 
 			switch new_order.Cmd{
-				case config.CostSend:
-					new_order.Cost = dummyCostFunc(new_order)//Current CF requires currentfloor and direction. How to fix
-					new_order.ElevID = config.LocalID
-					new_order.Cmd = config.OrdrAssign
-					trans_conf_chan <- new_order //transmit order cost
-					fmt.Println("trans_conf_chan written to")
+			case config.CostSend:
+				new_order.Cost = dummyCostFunc(new_order)//Current CF requires currentfloor and direction. How to fix
+				new_order.ElevID = config.LocalID
+				new_order.Cmd = config.OrdrAssign
+				trans_conf_chan <- new_order //transmit order cost
 
-				case config.OrdrAssign:
+			case config.OrdrAssign:
 				if new_order.MasterID == config.LocalID && new_order.Cost < lowest_cost{
-						master = true
-						lowest_cost = new_order.Cost
-						best_elev = new_order.ElevID
-						fmt.Println("best_elev", best_elev)
-					}
-				case config.OrdrAdd:
-					if new_order.ElevID == config.LocalID{
-						add_order_chan <- new_order //add order to queue
-						new_order.Cmd = config.OrdrConf
-						trans_conf_chan <- new_order //transmit order confirmation
-					}
-				case config.OrdrConf:
-					if new_order.ElevID != config.LocalID{
-						add_order_chan <- new_order
-					}
-				case config.OrdrDelete:
-					if new_order.ElevID != config.LocalID {
-						RemoveOrder(new_order.Floor, new_order.ElevID)
-					}
+					master = true
+					lowest_cost = new_order.Cost
+					best_elev = new_order.ElevID
+					fmt.Println("best_elev", best_elev)
+				}
+			case config.OrdrAdd:
+				if new_order.ElevID == config.LocalID{
+					add_order_chan <- new_order //add order to queue
+					new_order.Cmd = config.OrdrConf
+					trans_conf_chan <- new_order //transmit order confirmation
+				}
+			case config.OrdrConf:
+				if new_order.ElevID != config.LocalID{
+					add_order_chan <- new_order
+				}
+			case config.OrdrDelete:
+				if new_order.ElevID != config.LocalID {
+					RemoveOrder(new_order.Floor, new_order.ElevID)
+				}
 
-			case <- offline_alert:           //To retrieve any offlinemessages blocking. Find better solution
-			
-			case <- ticker.C:
+			}
+		case <- offline_alert:           //To retrieve any offlinemessages blocking. Find better solution
+		
+		case <- ticker.C:
 			if master { //Replace with if lowest_cost<10?
 				new_order.ElevID = best_elev
 				new_order.Cost = lowest_cost
@@ -299,7 +236,6 @@ func SlaveDistribution(add_order_chan chan<- config.OrderStruct){
 				lowest_cost = 10 //maxcost
 				best_elev = -1
 			}
-			}
 		}
 	}
 
@@ -307,35 +243,13 @@ func SlaveDistribution(add_order_chan chan<- config.OrderStruct){
 }
 //In channels: drv_buttons (add order) , floor reached (remove order) , costfunction. Out : push Order
 func Queue(raw_order_chan <-chan config.OrderStruct, distr_order_chan chan<- config.OrderStruct, add_order_chan <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct/*, trans_main_chan chan<- config.OrderStruct, rec_main_chan <-chan config.OrderStruct*/) {
-
-	//InitQueue()
-	//var prev_local_order config.OrderStruct
-
-	//add_to_queue := make(chan config.OrderStruct)
-	//distr_order := make(chan config.OrderStruct)
-	//source_trans_chan := make(chan config.OrderStruct, 10)
-	//sink_rec_chan   := make(chan config.OrderStruct, 10)	
-	
-	//watchdog_chan := make(chan config.OrderStruct)
-
-	//go watchdog.Watchdog(watchdog_chan, num_elevs, queue_size)
-	//maybe necessary to move to main
-
-	//go DistributeOrder(distr_order, add_to_queue, source_trans_chan, sink_rec_chan, config.LocalID)
-	//go bcast.OrderReceiver()
-
-	//drv_buttons := make (chan config.ButtonEvent) //distrubieres fra IO_channels, evt kan man kalle IO.IOwrapper er eller noe
-	//defer close(drv_buttons)
-	//go elevio.PollButtons(drv_buttons)
-
 	for {
 		select{
 		case new_order := <- raw_order_chan:
-
+			//Move this to distr order directly
 			fmt.Printf("Button input: %+v , Floor: %+v\n", new_order.Button, new_order.Floor)
 			if !checkIfInQueue(new_order){
 				distr_order_chan <- new_order
-				fmt.Printf("Distr_order_chan written to\n")
 			}
 
 		case order_to_add := <-add_order_chan:
@@ -343,15 +257,6 @@ func Queue(raw_order_chan <-chan config.OrderStruct, distr_order_chan chan<- con
 			if order_to_add.ElevID == config.LocalID{
 				execute_chan <- order_to_add
 			}
-/*	
-		case tmp := <- rec_main_chan:
-			fmt.Println("rx queue",tmp)
-			sink_rec_chan  <- tmp 
-
-		case tmp := <- source_trans_chan:
-			fmt.Println("tx queue",tmp)
-			trans_main_chan <- tmp
-		*/
 		}
 	}
 }
