@@ -7,13 +7,13 @@ import (
 	"net"
 	"reflect"
 	"strings"
-	"time"
+	//"time"
 )
 
 // Encodes received values from `chans` into type-tagged JSON, then broadcasts
 // it on `port`
 
-func Transmitter(port int, isOffline chan<- bool, chans ...interface{}) {
+func Transmitter(port int, chans ...interface{}) {
 	checkArgs(chans...)
 
 	n := 0
@@ -48,17 +48,17 @@ func Transmitter(port int, isOffline chan<- bool, chans ...interface{}) {
 		if err != nil{
 			//write to loopback if offline
 			_, err = conn.WriteTo([]byte(typeNames[chosen]+string(buf)), offline_addr)
-			time.Sleep(100*time.Millisecond)
-			fmt.Printf("Offline\n")
+			//time.Sleep(100*time.Millisecond)
+			//fmt.Printf("Offline\n")
 			if err != nil{
 				fmt.Printf("%v\n", err)
-				isOffline <- true
+				//isOffline <- true
 			}
-		} else{
-			isOffline <- false
-			time.Sleep(100*time.Millisecond)
+		} //else{
+			//isOffline <- false
+			//time.Sleep(100*time.Millisecond)
 			//fmt.Printf("Online\n")
-		}
+		//}
 		//new code end
 	}
 }

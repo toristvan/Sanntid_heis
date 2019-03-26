@@ -135,13 +135,12 @@ func checkIfInQueue(order config.OrderStruct) bool{
 }
 
 func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan chan<- config.OrderStruct, delete_order_chan <-chan config.OrderStruct /*, trans_main_chan chan<- config.OrderStruct, rec_main_chan <-chan config.OrderStruct,*/){
-	var port int 		= 20007
 	var new_order config.OrderStruct
 
 	trans_order_chan	:= make (chan config.OrderStruct)
 	offline_alert 		:= make (chan bool)
 
-	go bcast.Transmitter(port, offline_alert, trans_order_chan)
+	go bcast.Transmitter(config.Order_port, offline_alert, trans_order_chan)
 
 	//Make order chan bigger, so not freeze as easily?
 	for{
@@ -173,25 +172,24 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 
 
 
-func SlaveDistribution(add_order_chan chan<- config.OrderStruct){
+func ReceiveOrder(add_order_chan chan<- config.OrderStruct){
 
 	var lowest_cost int = 10 //max cost
 	var best_elev int 	=-1
 	var master bool 	= false
-	var port int 		= 20007
-	var backup_port	int	= 20070 + config.LocalID
+	
 	var new_order config.OrderStruct
 
 	rec_order_chan		:= make (chan config.OrderStruct)
 	trans_conf_chan		:= make (chan config.OrderStruct)
 	trans_backup_chan	:= make (chan bool)
-	offline_alert_chan 	:= make (chan bool)
-	offline_backup_chan	:= make (chan bool)
+	//offline_alert_chan 	:= make (chan bool)
+	//offline_backup_chan	:= make (chan bool)
 
 
-	go bcast.Receiver(port, rec_order_chan)
-	go bcast.Transmitter(port, offline_alert_chan, trans_conf_chan)  //La inn egen channel for å sende fra Receiverenden, slik at de ikke krasjer. Dårlig løsning?
-	go bcast.Transmitter(backup_port, offline_backup_chan, trans_backup_chan)  //Channel to send heartbeat to backup
+	go bcast.Receiver(config.Order_port, rec_order_chan)
+	go bcast.Transmitter(config.Order_port/*, offline_alert_chan*/, trans_conf_chan)  //La inn egen channel for å sende fra Receiverenden, slik at de ikke krasjer. Dårlig løsning?
+	go bcast.Transmitter(config.Backup_port/*, offline_backup_chan*/, trans_backup_chan)  //Channel to send heartbeat to backup
 
 	for {
 		ticker := time.NewTicker(100*time.Millisecond) //Need to change this logic
@@ -228,7 +226,7 @@ func SlaveDistribution(add_order_chan chan<- config.OrderStruct){
 				}
 
 			}
-		case <- offline_alert_chan:           //To retrieve any offlinemessages blocking. Find better solution
+		//case <- offline_alert_chan:           //To retrieve any offlinemessages blocking. Find better solution
 		
 		case <- ticker.C:
 			if master { //Replace with if lowest_cost<10?
@@ -241,7 +239,7 @@ func SlaveDistribution(add_order_chan chan<- config.OrderStruct){
 				best_elev = -1
 			}
 			trans_backup_chan <- true
-			<- offline_backup_chan   //To relief offlinechannel. Really should do something about
+			//<- offline_backup_chan   //To relief offlinechannel. Really should do something about
 		}
 	}
 

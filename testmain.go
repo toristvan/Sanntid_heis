@@ -77,9 +77,10 @@ func initElevNode(){
     Println("Set id")
     Scanf("%d", &id)
 
-    if id > num_of_elev{
+    for id > num_of_elev{
         Println("Invalid id! Shame on you")
-        id = 0
+        Println("Set id")
+    	Scanf("%d", &id)
     } 
 
     config.InitConfigData(id, num_of_elev)
@@ -95,9 +96,9 @@ func backUp(){
 
     backUp_transmit := make(chan string)
     backUp_receive := make(chan string)
-    offline_chan := make(chan bool)
+    //offline_chan := make(chan bool)
 
-    go bcast.Transmitter((20070 + config.LocalID), offline_chan, backUp_transmit)
+    go bcast.Transmitter((20070 + config.LocalID)/*, offline_chan*/, backUp_transmit)
     go bcast.Receiver((20070 + config.LocalID), backUp_receive)
 
     for{
@@ -110,19 +111,19 @@ func backUp(){
         case <- timeoutTicker.C:
         	if !primary {
         		backUp_transmit <- "confirm"
-        		select {
-        		case offline_check := <- offline_chan:
-        			if !offline_check {
+        		//select {
+        		//case offline_check := <- offline_chan:
+        		//	if !offline_check {
 			            err := backUpCmd.Run()
 
 			            if err != nil {
 			                Println(err)
 			            }
 			            primary = true
-		        	} else {
-	        			Println("Offline, no spawn")
-		        	}
-		        }
+		        //	} else {
+	        	//		Println("Offline, no spawn")
+		        //	}
+		        //}
 	        }
         }
     }
@@ -131,45 +132,28 @@ func backUp(){
 
 
 func main() {
-	/*
-    var reqUpdateSwitch bool 
-
-    rec_sink_chan       := make(chan config.OrderStruct,10)
-    trans_source_chan   := make(chan config.OrderStruct,10)
-
-    rec_main_chan       := make(chan config.OrderStruct)
-    trans_main_chan     := make(chan config.OrderStruct)
-    req_update_queue    := make(chan bool)
-    offline_notify_chan := make(chan bool)
-	*/
-    //transmit_backup_chan := make(chan bool)
-
     //Queue channels
-    add_order_chan := make(chan config.OrderStruct) //brukes
-	distr_order_chan := make(chan config.OrderStruct)  //brukes
-	//source_trans_chan := make(chan config.OrderStruct, 10)
-	//sink_rec_chan   := make(chan config.OrderStruct, 10)
+    add_order_chan := make(chan config.OrderStruct) 
+	distr_order_chan := make(chan config.OrderStruct)  
 	delete_order_chan := make(chan config.OrderStruct)
 
 	//elevrunner channels
-	//source_trans_chan := make (chan config.OrderStruct,10)
-  	//sink_rec_chan     := make (chan config.OrderStruct,10)
-  	raw_order_chan   := make (chan config.OrderStruct)  //brukes
-  	execute_chan  := make (chan config.OrderStruct)     //brukes
-  	elev_cmd_chan := make (chan config.ElevCommand)     //brukes
+  	raw_order_chan   := make (chan config.OrderStruct)  
+  	execute_chan  := make (chan config.OrderStruct)    
+  	elev_cmd_chan := make (chan config.ElevCommand)
     
     initElevNode()
-    elevio.Init(Sprintf("localhost:2000%d", config.LocalID)) //, num_floors)
+    //elevio.Init(Sprintf("localhost:2000%d", config.LocalID)) //, num_floors)  //For simulators
+    elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
 
     //Tidligere init i queue/Queue
-    go elevclient.ElevRunner(elev_cmd_chan, delete_order_chan /*, trans_source_chan, rec_sink_chan*/)
-    //go broadCastHub(rec_main_chan, trans_main_chan, req_update_queue, Offline_notify_chan)
-    go queue.DistributeOrder(distr_order_chan, add_order_chan, delete_order_chan /*, source_trans_chan, sink_rec_chan*/)
-    go queue.SlaveDistribution(add_order_chan)
+    go elevclient.ElevRunner(elev_cmd_chan, delete_order_chan )
+    go queue.DistributeOrder(distr_order_chan, add_order_chan, delete_order_chan)
+    go queue.ReceiveOrder(add_order_chan)
 
     //Tidligere Init i elevatorClient/ElevRunner
     go elevclient.IOwrapper(raw_order_chan)
-    go queue.Queue(raw_order_chan, distr_order_chan, add_order_chan ,execute_chan/*, source_trans_chan, sink_rec_chan*/)
+    go queue.Queue(raw_order_chan, distr_order_chan, add_order_chan ,execute_chan)
     go fsm.ElevStateMachine(elev_cmd_chan)
     go elevclient.ExecuteOrder(execute_chan)
 
@@ -179,33 +163,7 @@ func main() {
     for {
 		
 		time.Sleep(1*time.Second)
-/*
-        select{
-        case tmp := <- trans_source_chan: //How deep does the rabbit hole go?
-            Println("tx main", tmp)
-            trans_main_chan <- tmp
 
-        case tmp := <- rec_main_chan:
-            Println("rx main",tmp)
-            rec_sink_chan  <- tmp
-                
-        case tmp := <- offline_notify_chan:
-            if tmp {
-                reqUpdateSwitch = true
-                Println("offline", reqUpdateSwitch)
-            }else if reqUpdateSwitch {
-                req_update_queue <- true
-            }else{
-                req_update_queue <- false
-            }
-        case <- transmit_backup_chan:
-            initElevNode()
-		    elevio.Init(Sprintf("localhost:2000%d", config.LocalID)) //, num_floors)
-		    go elevclient.ElevRunner(trans_source_chan, rec_sink_chan)
-		    go broadCastHub(rec_main_chan, trans_main_chan, req_update_queue, Offline_notify_chan)
-		    go backUp(transmit_backup_chan)
-		    
-        }*/
     }
 }
 
