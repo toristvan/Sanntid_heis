@@ -192,7 +192,8 @@ func ReceiveOrder(add_order_chan chan<- config.OrderStruct){
 	go bcast.Transmitter(config.Backup_port/*, offline_backup_chan*/, trans_backup_chan)  //Channel to send heartbeat to backup
 
 	for {
-		ticker := time.NewTicker(100*time.Millisecond) //Need to change this logic
+		assign_timeout := time.NewTicker(100*time.Millisecond) //Need to change this logic
+		defer assign_timeout.Stop()
 		select{
 		case new_order = <-rec_order_chan:
 
@@ -228,7 +229,7 @@ func ReceiveOrder(add_order_chan chan<- config.OrderStruct){
 			}
 		//case <- offline_alert_chan:           //To retrieve any offlinemessages blocking. Find better solution
 		
-		case <- ticker.C:
+		case <- assign_timeout.C:
 			if master { //Replace with if lowest_cost<10?
 				new_order.ElevID = best_elev
 				new_order.Cost = lowest_cost
