@@ -37,7 +37,9 @@ func initElevNode(){
     Println("Id set to",id,"number of elevators", num_of_elev)
 }
 
-
+//Works fine-ish. Needs to send ID and store orders in a queue.
+//Needs to figure out properly when program is frozen. (When backup should take over)
+//Sometimes spawns unexpectedly...
 func backUp(checkbackup_chan chan<- bool){
     backUpCmd := exec.Command("gnome-terminal", "-x", "go", "run", "/home/student/Desktop/GR61REAL/project-gruppe-61-real/testmain.go")
 
@@ -76,6 +78,7 @@ func backUp(checkbackup_chan chan<- bool){
 	        }
         }
     }
+
 }
 
 
@@ -105,24 +108,17 @@ func main() {
 
 
 
-    //Init i main
-    
+    //Mainloop only runs after backup-check fails (No connection with primary function)
+    //Can run without backup if backUp is commented out and only sends bool through checkbackup_chan
     for {
         select{
-        case deadness := <- is_dead_chan:
-            switch deadness{
-            case true:
-                Printf("DEAD!\n")
-            case false:
-                Printf("ALIVE!\n")
-			}
-		
+        
 		case <- checkbackup_chan: 
 			Println("Primary")
 		    //Tidligere init i queue/Queue
 		    go elevclient.ElevRunner(elev_cmd_chan, delete_order_chan )
 		    go queue.DistributeOrder(distr_order_chan, add_order_chan, delete_order_chan, offline_chan)
-		    go queue.ReceiveOrder(add_order_chan)
+		    go queue.ReceiveOrder(add_order_chan, is_dead_chan)
 
 		  
     		go elevclient.IsElevDead(is_dead_chan)

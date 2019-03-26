@@ -147,7 +147,7 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 			switch new_order.Cmd{
 			case config.CostReq:
 				new_order.Cmd = config.CostSend
-				if offline{
+				if offline{ //Take order self if offline
 					new_order.ElevID = config.LocalID
 					add_order_chan <- new_order
 				} else{
@@ -167,27 +167,28 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 			} else {
 				fmt.Println("Wrong command")
 			}
-		case offline = <- offline_chan:           //To retrieve any offlinemessages blocking. Find better solution
-			
+		case offline = <- offline_chan: //sets offline if transmit cant connect to router
+			fmt.Println("offline:", offline)
 		}
 	}
 }
 
 
 
-func ReceiveOrder(add_order_chan chan<- config.OrderStruct){
+func ReceiveOrder(add_order_chan chan<- config.OrderStruct, is_dead_chan <-chan bool){
 
 	var lowest_cost int = 10 //max cost
 	var best_elev int 	=-1
 	var master bool 	= false
+	var elev_dead bool  = false
 	
 	var new_order config.OrderStruct
+
+
 
 	rec_order_chan		:= make (chan config.OrderStruct)
 	trans_conf_chan		:= make (chan config.OrderStruct)
 	trans_backup_chan	:= make (chan bool)
-	//offline_alert_chan 	:= make (chan bool)
-	//offline_backup_chan	:= make (chan bool)
 
 
 	go bcast.Receiver(config.Order_port, rec_order_chan)
@@ -202,13 +203,16 @@ func ReceiveOrder(add_order_chan chan<- config.OrderStruct){
 
 			switch new_order.Cmd{
 			case config.CostSend:
+				if elev_dead { //donst send cost if dead
+					break
+				}
 				new_order.Cost = dummyCostFunc(new_order)//Current CF requires currentfloor and direction. How to fix
 				new_order.ElevID = config.LocalID
 				new_order.Cmd = config.OrdrAssign
 				trans_conf_chan <- new_order //transmit order cost
 
 			case config.OrdrAssign:
-				if new_order.MasterID == config.LocalID && new_order.Cost < lowest_cost{
+				if new_order.MasterID == config.LocalID && new_order.Cost < lowest_cost{  //If this elev is the one to assign order.
 					master = true
 					lowest_cost = new_order.Cost
 					best_elev = new_order.ElevID
@@ -230,8 +234,10 @@ func ReceiveOrder(add_order_chan chan<- config.OrderStruct){
 				}
 
 			}
-		//case <- offline_alert_chan:           //To retrieve any offlinemessages blocking. Find better solution
 		
+		case elev_dead = <- is_dead_chan: //If 'dead' e.g motor unplugged
+			fmt.Println("Dead:", elev_dead)
+
 		case <- assign_timeout.C:
 			if master { //Replace with if lowest_cost<10?
 				new_order.ElevID = best_elev
@@ -243,14 +249,12 @@ func ReceiveOrder(add_order_chan chan<- config.OrderStruct){
 				best_elev = -1
 			}
 			trans_backup_chan <- true
-			//fmt.Println("sent backup")
-			//<- offline_backup_chan   //To relief offlinechannel. Really should do something about
 		}
 	}
 
 
 }
-//In channels: drv_buttons (add order) , floor reached (remove order) , costfunction. Out : push Order
+
 func Queue(raw_order_chan <-chan config.OrderStruct, distr_order_chan chan<- config.OrderStruct, add_order_chan <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct/*, trans_main_chan chan<- config.OrderStruct, rec_main_chan <-chan config.OrderStruct*/) {
 	for {
 		select{
