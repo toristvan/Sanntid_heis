@@ -17,20 +17,27 @@ type PeerUpdate struct {
 const interval = 15 * time.Millisecond
 const timeout = 50 * time.Millisecond
 
-func Transmitter(port int, id string, transmitEnable <-chan bool) {
+func Transmitter(port int, id string, offline_check chan bool) {
 
 	conn := conn.DialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 
 	enable := true
 	for {
-		select {
-		case enable = <-transmitEnable:
-		case <-time.After(interval):
-		}
-		if enable {
-			conn.WriteTo([]byte(id), addr)
-		}
+		//select {
+		//case 
+		enable = <-offline_check
+		//case <-time.After(interval):
+		//}
+			if enable {
+				_, err := conn.WriteTo([]byte(id), addr)
+				if err != nil {
+					offline_check <- true
+				} else {
+					offline_check <- false
+				}
+			}
+		//}
 	}
 }
 
