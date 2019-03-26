@@ -41,6 +41,17 @@ func Transmitter(port int, id string, offline_check chan bool) {
 	}
 }
 
+
+func CheckOffline(port int, offline_chan chan<- bool){
+	addr,_ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
+	_, err := net.DialUDP("udp4", nil, addr)
+	if err != nil{
+		offline_chan <- true
+	} else {
+		offline_chan <- false
+	}
+}
+
 func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 
 	var buf [1024]byte
