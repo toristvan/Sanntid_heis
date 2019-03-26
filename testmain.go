@@ -6,9 +6,9 @@ import (
     "./queueModule"
     "./driverModule/elevio"
     "./fsmModule"
-    //"./networkModule/bcast"
+    "./networkModule/bcast"
     "time"
-    //"os/exec"
+    "os/exec"
     ."fmt"
 )
 //var primary bool = false
@@ -87,47 +87,48 @@ func initElevNode(){
     Println("Id set to",id,"number of elevators", num_of_elev)
 }
 
-/*
-func backUp(transmit_backup_chan chan<- bool){
-    backUpCmd := exec.Command("gnome-terminal", "-x", "go", "run", "/home/student/GR61REAL/project-gruppe-61-real/testmain.go")
+
+func backUp(){
+    backUpCmd := exec.Command("gnome-terminal", "-x", "go", "run", "/home/student/Desktop/GR61REAL/project-gruppe-61-real/testmain.go")
 
     primary := false
 
     backUp_transmit := make(chan string)
     backUp_receive := make(chan string)
-    //dummy_chan := make(chan bool)        //Temp chan to ignore isOffline. Find better solution
+    offline_chan := make(chan bool)
 
-    go bcast.Transmitter((20005 + config.LocalID), _, backUp_transmit)
-    go bcast.Receiver((20005 + config.LocalID), backUp_receive)
+    go bcast.Transmitter((20070 + config.LocalID), offline_chan, backUp_transmit)
+    go bcast.Receiver((20070 + config.LocalID), backUp_receive)
 
     for{
-    	timeoutTicker := time.NewTicker(3000*time.Millisecond)
+    	timeoutTicker := time.NewTicker(1000*time.Millisecond)
         defer timeoutTicker.Stop()
-
-        if primary {
-        	backUp_transmit <- "alive"
-        	time.Sleep(1000*time.Millisecond)
-        }
 
         select{
         case <- backUp_receive:
         	Println("Backup confirmation")
-        	backUp_transmit <- "alive"
         case <- timeoutTicker.C:
         	if !primary {
-	            err := backUpCmd.Run()
+        		backUp_transmit <- "confirm"
+        		select {
+        		case offline_check := <- offline_chan:
+        			if !offline_check {
+			            err := backUpCmd.Run()
 
-	            if err != nil {
-	                Println(err)
-	            }
-	            primary = true
-	            transmit_backup_chan <- true
+			            if err != nil {
+			                Println(err)
+			            }
+			            primary = true
+		        	} else {
+	        			Println("Offline, no spawn")
+		        	}
+		        }
 	        }
         }
     }
 }
 
-*/
+
 
 func main() {
 	/*
@@ -173,7 +174,7 @@ func main() {
     go elevclient.ExecuteOrder(execute_chan)
 
     //Init i main
-    //go backUp(transmit_backup_chan)
+    go backUp()
     
     for {
 		

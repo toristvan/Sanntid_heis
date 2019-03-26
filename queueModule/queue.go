@@ -145,8 +145,6 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 
 	//Make order chan bigger, so not freeze as easily?
 	for{
-		ticker := time.NewTicker(100*time.Millisecond) //Need to change this logic
-		defer ticker.Stop()
 		select{
 		case new_order = <- distr_order_chan:
 			switch new_order.Cmd{
@@ -168,7 +166,7 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 				fmt.Println("Wrong command")
 			}
 		case <- offline_alert:           //To retrieve any offlinemessages blocking. Find better solution
-			fmt.Printf("offlinemessages\n")
+			
 		}
 	}
 }
@@ -181,14 +179,20 @@ func SlaveDistribution(add_order_chan chan<- config.OrderStruct){
 	var best_elev int 	=-1
 	var master bool 	= false
 	var port int 		= 20007
+	var backup_port	int	= 20070 + config.LocalID
 	var new_order config.OrderStruct
 
 	rec_order_chan		:= make (chan config.OrderStruct)
 	trans_conf_chan		:= make (chan config.OrderStruct)
-	offline_alert 		:= make (chan bool)
+	trans_backup_chan	:= make (chan bool)
+	offline_alert_chan 	:= make (chan bool)
+	offline_backup_chan	:= make (chan bool)
+
 
 	go bcast.Receiver(port, rec_order_chan)
-	go bcast.Transmitter(port, offline_alert, trans_conf_chan)  //La inn egen channel for å sende fra Receiverenden, slik at de ikke krasjer. Dårlig løsning?
+	go bcast.Transmitter(port, offline_alert_chan, trans_conf_chan)  //La inn egen channel for å sende fra Receiverenden, slik at de ikke krasjer. Dårlig løsning?
+	go bcast.Transmitter(backup_port, offline_backup_chan, trans_backup_chan)  //Channel to send heartbeat to backup
+
 	for {
 		ticker := time.NewTicker(100*time.Millisecond) //Need to change this logic
 		select{
@@ -224,7 +228,7 @@ func SlaveDistribution(add_order_chan chan<- config.OrderStruct){
 				}
 
 			}
-		case <- offline_alert:           //To retrieve any offlinemessages blocking. Find better solution
+		case <- offline_alert_chan:           //To retrieve any offlinemessages blocking. Find better solution
 		
 		case <- ticker.C:
 			if master { //Replace with if lowest_cost<10?
@@ -236,6 +240,8 @@ func SlaveDistribution(add_order_chan chan<- config.OrderStruct){
 				lowest_cost = 10 //maxcost
 				best_elev = -1
 			}
+			trans_backup_chan <- true
+			<- offline_backup_chan   //To relief offlinechannel. Really should do something about
 		}
 	}
 
