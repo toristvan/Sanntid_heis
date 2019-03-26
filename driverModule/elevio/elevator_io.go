@@ -35,6 +35,12 @@ func Init(addr string) { //numFloors int) {
 			SetButtonLamp(config.ButtonType(i), j, false)
 		}
 	}
+	SetMotorDirection(config.MD_Down)
+	for getFloor() == -1 {
+		//wait until floor reached
+	}
+	SetMotorDirection(config.MD_Stop)
+  	SetFloorIndicator(getFloor())
 
 }
 
