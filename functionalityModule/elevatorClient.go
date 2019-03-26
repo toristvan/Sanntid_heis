@@ -8,21 +8,12 @@ import (
     "fmt"
     "time"
 )
-/*
-=========================== Bothause! ================================
-Denne fungerer med å bruke "Test queue" i queueModule (kanskje, har blitt modifisert)
-
-// TODO:
-Legge inn retransmit order hvis en blir passert. Line 142->
-*/
 
 type floorStatus struct{
   stop_up bool
   stop_down bool
 }
-
 var current_floor int
-//convert to int
 var stopArray[elevio.Num_floors] floorStatus
 
 func initStopArray(){
@@ -31,9 +22,6 @@ func initStopArray(){
     stopArray[i].stop_down = false
   }
 } 
-
-//var index = 1
-
 
 func isEmpty(arr [elevio.Num_floors]floorStatus, from int, to int) bool{
   	for i := from ; i < to ; i++{
@@ -48,15 +36,11 @@ func isEmpty(arr [elevio.Num_floors]floorStatus, from int, to int) bool{
 func elevWakeUp(wakeup_chan chan<- bool){
   for {
     if !isEmpty(stopArray, elevio.Ground_floor, elevio.Num_floors) && (fsm.RetrieveElevState() == config.Idle) {
-      fmt.Println("Queue Alert!")
+      //fmt.Println("Queue Alert!")
       wakeup_chan <- true
     }
     time.Sleep(1*time.Second)   //Unload CPU
   }
-}
-
-func dummyCostFunc(hallCall config.OrderStruct) int {
-  return 1
 }
 
 func executeOrder(execute_chan <-chan config.OrderStruct){ //, pending_orders chan<- floorStatus){
@@ -112,30 +96,44 @@ func IOwrapper(new_order_chan chan<- config.OrderStruct, floor_chan chan<- int){
   }
 }
 
-func ElevRunner(){
+
+
+func ElevRunner(trans_main_chan chan<- config.OrderStruct, rec_main_chan <-chan config.OrderStruct){
   //var current_dir config.MotorDirection
   //var prev_dir config.MotorDirection
-  var current_state config.ElevStateType = config.Idle
   //fsm.RetrieveState()
+  var current_state config.ElevStateType = config.Idle
 
+  source_trans_chan := make (chan config.OrderStruct,10)
+  sink_rec_chan     := make (chan config.OrderStruct,10)
 
-  floor_chan  := make (chan int)
-  input_queue := make (chan config.OrderStruct)
-  execute_chan := make (chan config.OrderStruct)
-  wakeup_chan := make(chan bool)
+  floor_chan    := make (chan int)
+  input_queue   := make (chan config.OrderStruct)
+  execute_chan  := make (chan config.OrderStruct)
+  wakeup_chan   := make (chan bool)
   elev_cmd_chan := make (chan config.ElevCommand)
 
   go executeOrder(execute_chan)
-  go queue.Queue(input_queue, execute_chan)
+  go queue.Queue(input_queue, execute_chan, source_trans_chan, sink_rec_chan)
+
   go IOwrapper(input_queue, floor_chan)
   go elevWakeUp(wakeup_chan)
   go fsm.ElevStateMachine(elev_cmd_chan)
 
   for{
     select{
+    case tmp := <- source_trans_chan:
+      fmt.Println("tx elevclient",tmp)
+      trans_main_chan <- tmp
+
+    case tmp := <- rec_main_chan:
+      fmt.Println("rx elevclient",tmp)
+      sink_rec_chan <- tmp
+
+    
     case current_floor = <- floor_chan:
     	current_state = fsm.RetrieveElevState()
-      	elevio.SetFloorIndicator(current_floor)
+      elevio.SetFloorIndicator(current_floor)
       
     	switch current_state{
         case config.GoingUp:
@@ -146,9 +144,9 @@ func ElevRunner(){
 	        	stopArray[current_floor].stop_down = false
 	        	queue.RemoveOrder(current_floor, config.LocalID)
         		fmt.Println(stopArray)
-        		/*for i := 0; i < 3; i++ {
-        			elevio.SetButtonLamp(config.ButtonType(i), current_floor, false)  //Switch off all lights associated with floor
-        		}*/
+        		//for i := 0; i < 3; i++ {
+        			//elevio.SetButtonLamp(config.ButtonType(i), current_floor, false)  //Switch off all lights associated with floor
+        		//}
 
         	}  
         	//Stop again if new order received when at floor with open door 
@@ -157,11 +155,11 @@ func ElevRunner(){
 	        	stopArray[current_floor].stop_up = false
 	        	stopArray[current_floor].stop_down = false
 	        	queue.RemoveOrder(current_floor, config.LocalID)
-        		fmt.Println(stopArray)
+        		//fmt.Println(stopArray)
         	}
 
         	if !isEmpty(stopArray, current_floor+1, elevio.Num_floors){
-            	fmt.Println(current_state) //Remove prints
+            	//fmt.Println(current_state) //Remove prints
             	elev_cmd_chan <- config.GoUp
           	} else if !isEmpty(stopArray, elevio.Ground_floor, current_floor){
             	elev_cmd_chan <- config.GoDown
@@ -175,12 +173,12 @@ func ElevRunner(){
         		stopArray[current_floor].stop_up = false
         		stopArray[current_floor].stop_down = false
 	        	queue.RemoveOrder(current_floor, config.LocalID)
-        		fmt.Println(stopArray)        		
+        		//fmt.Println(stopArray)        		
 
-	        	/*
-        		for i := 0; i < 3; i++ {
-        			elevio.SetButtonLamp(config.ButtonType(i), current_floor, false)  //Switch off all lights associated with floor
-        		}*/
+	        	
+        		//for i := 0; i < 3; i++ {
+        			//elevio.SetButtonLamp(config.ButtonType(i), current_floor, false)  //Switch off all lights associated with floor
+        		//}
         	}
         	//Stop again if new order received when at floor with open door 
         	if fsm.RetrieveElevState() == config.AtFloor && (stopArray[current_floor].stop_up || stopArray[current_floor].stop_down) {
@@ -188,7 +186,7 @@ func ElevRunner(){
 	        	stopArray[current_floor].stop_up = false
 	        	stopArray[current_floor].stop_down = false
 	        	queue.RemoveOrder(current_floor, config.LocalID)
-        		fmt.Println(stopArray)
+        		//fmt.Println(stopArray)
         	}
         	if !isEmpty(stopArray, elevio.Ground_floor, current_floor){
             	elev_cmd_chan <- config.GoDown
@@ -209,10 +207,10 @@ func ElevRunner(){
 
 	        elev_cmd_chan <- config.Finished
 	        //Turn off lights should be in RemoveArray instead
-	        /*
-	        for i := 0; i < 3; i++ {
-	          elevio.SetButtonLamp(config.ButtonType(i), current_floor, false)  //Switch off all lights associated with floor
-	        }*/
+	        
+	        //for i := 0; i < 3; i++ {
+	          //elevio.SetButtonLamp(config.ButtonType(i), current_floor, false)  //Switch off all lights associated with floor
+	        //}
 	    } else if !isEmpty(stopArray, elevio.Ground_floor, current_floor){
         	elev_cmd_chan <- config.GoDown
       	} else if !isEmpty(stopArray, current_floor+1, elevio.Num_floors){

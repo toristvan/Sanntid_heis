@@ -1,11 +1,22 @@
 package config
 
 import (
+	"fmt"
 	"time"
 )
 
-const LocalID int = 0
-const Num_elevs int = 1
+var LocalID int
+var Num_elevs int
+
+func InitConfigData(id int, num_of_elevs int){
+	LocalID   = id
+	Num_elevs = num_of_elevs
+	fmt.Println("Configuration data initiated")
+}
+
+//const LocalID int = 0
+//const Num_elevs int = 1
+//var Num_elevs int
 
 type ElevStateType int
 const (
@@ -48,7 +59,7 @@ type OrderCommand int
 const (
 	CostReq 		OrderCommand = 0
 	CostSend 		OrderCommand = 1
-	OrdrAssign 	OrderCommand = 2
+	OrdrAssign 		OrderCommand = 2
 	OrdrAdd 		OrderCommand = 3
 	OrdrConf 		OrderCommand = 4
 )

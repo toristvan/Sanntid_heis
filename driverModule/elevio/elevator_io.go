@@ -16,7 +16,6 @@ var _initialized bool = false
 var _mtx sync.Mutex
 var _conn net.Conn
 
-
 func Init(addr string) { //numFloors int) {
 	if _initialized {
 		fmt.Println("Driver already initialized!")

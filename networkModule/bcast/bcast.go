@@ -12,7 +12,8 @@ import (
 
 // Encodes received values from `chans` into type-tagged JSON, then broadcasts
 // it on `port`
-func Transmitter(port int, chans ...interface{}) {
+
+func Transmitter(port int, isOffline chan<- bool, chans ...interface{}) {
 	checkArgs(chans...)
 
 	n := 0
@@ -33,10 +34,12 @@ func Transmitter(port int, chans ...interface{}) {
 	conn := conn.DialBroadcastUDP(port)
 	//prev code: addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 	addr,_ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
+
 	//new code start
 	var loopbackIP string = "127.0.0.1" //standard loopback ip
 	offline_addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", loopbackIP, port))
 	//new code end
+
 	for {
 		chosen, value, _ := reflect.Select(selectCases)
 		buf, _ := json.Marshal(value.Interface())
@@ -49,16 +52,16 @@ func Transmitter(port int, chans ...interface{}) {
 			fmt.Printf("Offline\n")
 			if err != nil{
 				fmt.Printf("%v\n", err)
+				isOffline <- true
 			}
 		} else{
-			//time.Sleep(100*time.Millisecond)
+			isOffline <- false
+			time.Sleep(100*time.Millisecond)
 			//fmt.Printf("Online\n")
 		}
 		//new code end
 	}
 }
-
-
 
 // Matches type-tagged JSON received on `port` to element types of `chans`, then
 // sends the decoded value on the corresponding channel
