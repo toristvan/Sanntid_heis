@@ -53,6 +53,7 @@ type OrderStruct struct
 	ElevID int
 	Cost int
 	Cmd OrderCommand
+	MasterID int
 }
 
 type OrderCommand int
@@ -62,6 +63,7 @@ const (
 	OrdrAssign 		OrderCommand = 2
 	OrdrAdd 		OrderCommand = 3
 	OrdrConf 		OrderCommand = 4
+	OrdrDelete		OrderCommand = 5
 )
 
 type ElevCommand int
