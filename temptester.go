@@ -82,5 +82,5 @@ func setOrder(trans chan<- config.OrderStruct){
 }
 
 func printOrder(order config.OrderStruct){
-	fmt.Printf("Button: %d\nFloor: %d\nID: %d\nCost: %d\nCmd: %d\nTime: %s\n", order.Button, order.Floor, order.ElevID, order.Cost, order.Cmd, order.Timestamp.String())
+	fmt.Printf("\nButton: %d\nFloor: %d\nID: %d\nCost: %d\nCmd: %d\nTime: %s\n\n", order.Button, order.Floor, order.ElevID, order.Cost, order.Cmd, order.Timestamp.String())
 }

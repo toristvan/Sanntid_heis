@@ -134,11 +134,10 @@ func checkIfInQueue(order config.OrderStruct) bool{
 	return false
 }
 
-func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan chan<- config.OrderStruct, delete_order_chan <-chan config.OrderStruct /*, trans_main_chan chan<- config.OrderStruct, rec_main_chan <-chan config.OrderStruct,*/){
+func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan chan<- config.OrderStruct, delete_order_chan <-chan config.OrderStruct, offline_chan <-chan bool){
 	var new_order config.OrderStruct
-
+	var offline bool = false
 	trans_order_chan	:= make (chan config.OrderStruct)
-
 	go bcast.Transmitter(config.Order_port, trans_order_chan)
 
 	//Make order chan bigger, so not freeze as easily?
@@ -148,7 +147,12 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 			switch new_order.Cmd{
 			case config.CostReq:
 				new_order.Cmd = config.CostSend
-				trans_order_chan <- new_order
+				if offline{
+					new_order.ElevID = config.LocalID
+					add_order_chan <- new_order
+				} else{
+					trans_order_chan <- new_order
+				}
 			case config.OrdrAdd:
 				add_order_chan <- new_order
 				new_order.Cmd = config.OrdrConf
@@ -163,6 +167,7 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 			} else {
 				fmt.Println("Wrong command")
 			}
+		case offline = <- offline_chan:           //To retrieve any offlinemessages blocking. Find better solution
 			
 		}
 	}
