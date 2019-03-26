@@ -40,7 +40,7 @@ func ElevStateMachine(new_command_chan <-chan config.ElevCommand){
           elev_state = config.AtFloor           //fjern hvis unødvendig, hør med Tor
           fmt.Println("At floor")
           elevio.SetDoorOpenLamp(true)
-          time.Sleep(2000*time.Millisecond)
+          time.Sleep(500*time.Millisecond)
           elevio.SetDoorOpenLamp(false)
           //elev_state = config.Idle
         case config.Finished:

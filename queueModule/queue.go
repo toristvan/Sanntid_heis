@@ -28,7 +28,6 @@ func InitQueue() [][]config.OrderStruct {
 	var invalidOrder config.OrderStruct
 	invalidOrder.Button = 0
 	invalidOrder.Floor = -1
-
 	que := make([][]config.OrderStruct, num_elevs)
 	for n := range que{
 		que[n] = make([]config.OrderStruct, queue_size)
@@ -38,8 +37,6 @@ func InitQueue() [][]config.OrderStruct {
 			que[j][i] = invalidOrder
 		}
 	}
-
-
 	return que
 }
 
@@ -60,6 +57,10 @@ func costFunction(newFloor int, currentFloor int, dir config.MotorDirection ) in
 //func dummyCostFunc(hallCall config.ButtonType, floor int, dir config.MotorDirection) int {
 func dummyCostFunc(order config.OrderStruct) int {
   return 1
+}
+
+func RetriveQueue() [][]config.OrderStruct{
+	return orderQueue
 }
 
 func insertToQueue(order config.OrderStruct, index int, id int){
@@ -152,7 +153,7 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 
 	//Seems to be many unneccessary if's here
 	for{
-		ticker := time.NewTicker(500*time.Millisecond) //Need to change this logic
+		ticker := time.NewTicker(1000*time.Millisecond) //Need to change this logic
 		defer ticker.Stop()
 		select{
 		case new_order = <- distr_order_chan:
