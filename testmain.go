@@ -7,6 +7,7 @@ import (
     "./driverModule/elevio"
     "./fsmModule"
     "./networkModule/bcast"
+    "./networkModule/peers"
     "time"
     "os/exec"
     ."fmt"
@@ -89,41 +90,41 @@ func initElevNode(){
 }
 
 
-func backUp(){
+func backUp(checkbackup_chan chan<- bool){
     backUpCmd := exec.Command("gnome-terminal", "-x", "go", "run", "/home/student/Desktop/GR61REAL/project-gruppe-61-real/testmain.go")
 
+    Println("backup init")
     primary := false
 
-    backUp_transmit := make(chan string)
-    backUp_receive := make(chan string)
-    //offline_chan := make(chan bool)
+    backup_receive_chan := make(chan bool)
+    offline_chan := make(chan bool)
 
-    go bcast.Transmitter((20070 + config.LocalID)/*, offline_chan*/, backUp_transmit)
-    go bcast.Receiver((20070 + config.LocalID), backUp_receive)
+    go peers.Transmitter(config.Backup_port, "Tester", offline_chan)
+    go bcast.Receiver(config.Backup_port, backup_receive_chan)
 
     for{
     	timeoutTicker := time.NewTicker(1000*time.Millisecond)
         defer timeoutTicker.Stop()
 
         select{
-        case <- backUp_receive:
-        	Println("Backup confirmation")
+        case <- backup_receive_chan:
         case <- timeoutTicker.C:
         	if !primary {
-        		backUp_transmit <- "confirm"
-        		//select {
-        		//case offline_check := <- offline_chan:
-        		//	if !offline_check {
+        		offline_chan <- true
+        		select {
+        		case offline_check := <- offline_chan:
+        			if !offline_check {
 			            err := backUpCmd.Run()
 
 			            if err != nil {
 			                Println(err)
 			            }
 			            primary = true
-		        //	} else {
-	        	//		Println("Offline, no spawn")
-		        //	}
-		        //}
+			            checkbackup_chan <- true
+		        	} else {
+	        			Println("Offline, no spawn")
+		        	}
+		        }
 	        }
         }
     }
@@ -141,29 +142,36 @@ func main() {
   	raw_order_chan   := make (chan config.OrderStruct)  
   	execute_chan  := make (chan config.OrderStruct)    
   	elev_cmd_chan := make (chan config.ElevCommand)
+
+  	checkbackup_chan := make(chan bool)
     
     initElevNode()
-    //elevio.Init(Sprintf("localhost:2000%d", config.LocalID)) //, num_floors)  //For simulators
-    elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
+    go backUp(checkbackup_chan)
+    
+    elevio.Init(Sprintf("localhost:2000%d", config.LocalID)) //, num_floors)  //For simulators
+    //elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
 
-    //Tidligere init i queue/Queue
-    go elevclient.ElevRunner(elev_cmd_chan, delete_order_chan )
-    go queue.DistributeOrder(distr_order_chan, add_order_chan, delete_order_chan)
-    go queue.ReceiveOrder(add_order_chan)
-
-    //Tidligere Init i elevatorClient/ElevRunner
-    go elevclient.IOwrapper(raw_order_chan)
-    go queue.Queue(raw_order_chan, distr_order_chan, add_order_chan ,execute_chan)
-    go fsm.ElevStateMachine(elev_cmd_chan)
-    go elevclient.ExecuteOrder(execute_chan)
 
     //Init i main
-    go backUp()
     
     for {
 		
-		time.Sleep(1*time.Second)
+		select {
+		case <- checkbackup_chan: 
+			Println("Primary")
+		    //Tidligere init i queue/Queue
+		    go elevclient.ElevRunner(elev_cmd_chan, delete_order_chan )
+		    go queue.DistributeOrder(distr_order_chan, add_order_chan, delete_order_chan)
+		    go queue.ReceiveOrder(add_order_chan)
 
+		    //Tidligere Init i elevatorClient/ElevRunner
+		    go elevclient.IOwrapper(raw_order_chan)
+		    go queue.Queue(raw_order_chan, distr_order_chan, add_order_chan ,execute_chan)
+		    go fsm.ElevStateMachine(elev_cmd_chan)
+		    go elevclient.ExecuteOrder(execute_chan)
+		default:
+			time.Sleep(1*time.Second)
+		}
     }
 }
 
