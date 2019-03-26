@@ -43,6 +43,8 @@ func broadCastHub(recive_chan  chan <- config.OrderStruct, transmit_chan <-chan 
                     var queue = queue.RetriveQueue()
 
                     txPacket.Order = queue[0][0]
+
+                    Println(txPacket.Order)
                     txPacket.req_update = false
                     trans <- txPacket
                 }
@@ -84,7 +86,7 @@ func initElevNode(){
 }
 
 
-func backUp(){
+func backUp(transmit_backup_chan chan<- config.OrderStruct){
     backUpCmd := exec.Command("gnome-terminal", "-x", "go", "run", "/home/student/GR61REAL/project-gruppe-61-real/testmain.go")
 
     for{
@@ -117,17 +119,16 @@ func main() {
     rec_main_chan       := make(chan config.OrderStruct)
     trans_main_chan     := make(chan config.OrderStruct)
     req_update_queue    := make(chan bool)
-
     Offline_notify_chan := make(chan bool)
 
-
+    transmit_backup_chan := make(chan config.OrderStruct)
 
     initElevNode()
 
     elevio.Init("localhost:15657") //, num_floors)
     go elevclient.ElevRunner(trans_source_chan, rec_sink_chan)
     go broadCastHub(rec_main_chan, trans_main_chan, req_update_queue, Offline_notify_chan)
-    //go backUp()
+    go backUp(transmit_backup_chan)
 
     for {
         select{
@@ -148,6 +149,8 @@ func main() {
             }else{
                 req_update_queue <- false
             }
+        case tmp := <- transmit_backup_chan:
+            trans_main_chan <- tmp
         }
     }
 }
