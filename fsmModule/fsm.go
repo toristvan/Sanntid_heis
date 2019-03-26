@@ -29,22 +29,22 @@ func ElevStateMachine(new_command_chan <-chan config.ElevCommand){
 
         case config.GoUp:
           elevio.SetMotorDirection(config.MD_Up)
-          elev_state = config.GoingUp            //fjern hvis unødvendig, hør med Tor
+          elev_state = config.GoingUp           
           fmt.Println("Going up")
         case config.GoDown:
           elevio.SetMotorDirection(config.MD_Down)
-          elev_state = config.GoingDown            //fjern hvis unødvendig, hør med Tor
+          elev_state = config.GoingDown         
           fmt.Println("Going down")
         case config.FloorReached:
           elevio.SetMotorDirection(config.MD_Stop)
-          elev_state = config.AtFloor           //fjern hvis unødvendig, hør med Tor
+          elev_state = config.AtFloor           
           fmt.Println("At floor")
           elevio.SetDoorOpenLamp(true)
           time.Sleep(500*time.Millisecond)
           elevio.SetDoorOpenLamp(false)
           //elev_state = config.Idle
         case config.Finished:
-          elev_state = config.Idle          //fjern hvis unødvendig, hør med Tor
+          elev_state = config.Idle 
           fmt.Println("Idle")
         }
     }
