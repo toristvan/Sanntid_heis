@@ -138,9 +138,8 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 	var new_order config.OrderStruct
 
 	trans_order_chan	:= make (chan config.OrderStruct)
-	offline_alert 		:= make (chan bool)
 
-	go bcast.Transmitter(config.Order_port, offline_alert, trans_order_chan)
+	go bcast.Transmitter(config.Order_port, trans_order_chan)
 
 	//Make order chan bigger, so not freeze as easily?
 	for{
@@ -160,11 +159,10 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 			if new_order.Cmd == config.OrdrDelete{
 				fmt.Println("Deleting order")
 				trans_order_chan <- new_order
-				fmt.Println("Order sent for deletion")				
+				fmt.Println("Order sent for deletion")
 			} else {
 				fmt.Println("Wrong command")
 			}
-		case <- offline_alert:           //To retrieve any offlinemessages blocking. Find better solution
 			
 		}
 	}
@@ -240,6 +238,7 @@ func ReceiveOrder(add_order_chan chan<- config.OrderStruct){
 				best_elev = -1
 			}
 			trans_backup_chan <- true
+			//fmt.Println("sent backup")
 			//<- offline_backup_chan   //To relief offlinechannel. Really should do something about
 		}
 	}

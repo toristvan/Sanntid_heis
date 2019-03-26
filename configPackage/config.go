@@ -14,7 +14,7 @@ func InitConfigData(id int, num_of_elevs int){
 	LocalID   = id
 	Num_elevs = num_of_elevs
 	Backup_port	= 20070 + LocalID
-	Order_port = 20007
+	Order_port = 20005
 	fmt.Println("Configuration data initiated")
 }
 

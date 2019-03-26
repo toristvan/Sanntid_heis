@@ -52,10 +52,10 @@ func Transmitter(port int, chans ...interface{}) {
 			//fmt.Printf("Offline\n")
 			if err != nil{
 				fmt.Printf("%v\n", err)
-				//isOffline <- true
+				//offline_check <- true
 			}
 		} //else{
-			//isOffline <- false
+			//offline_check <- false
 			//time.Sleep(100*time.Millisecond)
 			//fmt.Printf("Online\n")
 		//}
