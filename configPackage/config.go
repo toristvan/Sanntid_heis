@@ -18,10 +18,6 @@ func InitConfigData(id int, num_of_elevs int){
 	fmt.Println("Configuration data initiated")
 }
 
-//const LocalID int = 0
-//const Num_elevs int = 1
-//var Num_elevs int
-
 type ElevStateType int
 const (
 	Idle		ElevStateType = 0
@@ -72,20 +68,8 @@ const (
 
 type ElevCommand int
 const (
-  //NewOrder  	ElevCommand = 0
-  GoUp    			ElevCommand = 1
-  GoDown    		ElevCommand = 2
-  FloorReached  	ElevCommand = 3
-  Finished  		ElevCommand = 4
+  GoUp    			ElevCommand = 0
+  GoDown    		ElevCommand = 1
+  FloorReached  	ElevCommand = 2
+  Finished  		ElevCommand = 3
 )
-
-//What kind of status?
-
-/*
-type Status int
-const (
-  Pending Status = 0
-  Active  Status = 1
-  Done    Status = 2
-)
-*/

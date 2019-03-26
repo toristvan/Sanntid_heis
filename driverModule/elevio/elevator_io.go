@@ -129,8 +129,6 @@ func PollObstructionSwitch(receiver chan<- bool) {
 	}
 }
 
-//
-
 func getButton(button config.ButtonType, floor int) bool {
 	_mtx.Lock()
 	defer _mtx.Unlock()

@@ -13,6 +13,8 @@ import (
 // Encodes received values from `chans` into type-tagged JSON, then broadcasts
 // it on `port`
 
+
+//Dont't add time.Sleep()'s (!)
 func Transmitter(port int, chans ...interface{}) {
 	checkArgs(chans...)
 
@@ -46,19 +48,12 @@ func Transmitter(port int, chans ...interface{}) {
 		_, err = conn.WriteTo([]byte(typeNames[chosen]+string(buf)), addr)
 		//new code start
 		if err != nil{
-			//write to loopback if offline
+			//write to loopback if offline - Not working quite as expected. Implemented workaround in queue
 			_, err = conn.WriteTo([]byte(typeNames[chosen]+string(buf)), offline_addr)
-			//time.Sleep(100*time.Millisecond)
-			//fmt.Printf("Offline\n")
 			if err != nil{
 				fmt.Printf("%v\n", err)
-				//offline_check <- true
 			}
-		} //else{
-			//offline_check <- false
-			//time.Sleep(100*time.Millisecond)
-			//fmt.Printf("Online\n")
-		//}
+		}
 		//new code end
 	}
 }
