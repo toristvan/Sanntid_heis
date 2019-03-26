@@ -43,7 +43,7 @@ func elevWakeUp(wakeup_chan chan<- bool){
   }
 }
 
-func executeOrder(execute_chan <-chan config.OrderStruct){ //, pending_orders chan<- floorStatus){
+func ExecuteOrder(execute_chan <-chan config.OrderStruct){ //, pending_orders chan<- floorStatus){
   for {
 
     new_order := <- execute_chan   //Input from queue
@@ -61,163 +61,143 @@ func executeOrder(execute_chan <-chan config.OrderStruct){ //, pending_orders ch
   }
 }
 
-func IOwrapper(new_order_chan chan<- config.OrderStruct, floor_chan chan<- int){
+func IOwrapper(raw_order_chan chan<- config.OrderStruct){
 
-  drv_floors  := make(chan int)
   drv_buttons := make(chan config.ButtonEvent)
 
-  go elevio.PollFloorSensor(drv_floors)
   go elevio.PollButtons(drv_buttons)
 
-  elevio.SetMotorDirection(config.MD_Down)
-  current_floor = <- drv_floors
-  elevio.SetMotorDirection(config.MD_Stop)
-  elevio.SetFloorIndicator(current_floor)
-
   for{
-      select{
-      case button_input := <-drv_buttons:
-        var new_order config.OrderStruct
-        new_order.ElevID    = config.LocalID
-        new_order.Button    = button_input.Button
-        new_order.Floor     = button_input.Floor
+      button_input := <-drv_buttons
+      var new_order config.OrderStruct
+      new_order.ElevID    = config.LocalID
+      new_order.Button    = button_input.Button
+      new_order.Floor     = button_input.Floor
+      new_order.MasterID  = config.LocalID
 
-        if (new_order.Button != config.BT_Cab){
-          new_order.Cmd = config.CostReq
-        } else{
-          new_order.Cmd = config.OrdrAdd
-        }
+      if (new_order.Button != config.BT_Cab){
+        new_order.Cmd = config.CostReq
+      } else{
+        new_order.Cmd = config.OrdrAdd
+      }
 
-        new_order_chan <- new_order
-
-    case current_floor = <- drv_floors: //kanskje unøvendig, ikke helt sikker
-        floor_chan <- current_floor
-    }
+      raw_order_chan <- new_order
   }
 }
 
+func setFloorFalse() config.OrderStruct{
+  var order_to_delete config.OrderStruct
+  
+  order_to_delete.Floor = current_floor
+  order_to_delete.ElevID = config.LocalID
+  order_to_delete.Cmd = config.OrdrDelete
+
+  stopArray[current_floor].stop_up = false
+  stopArray[current_floor].stop_down = false
+  queue.RemoveOrder(current_floor, config.LocalID)
+  fmt.Printf("in setFloorFalse\n")
+  return order_to_delete
+  
+}
 
 
-func ElevRunner(trans_main_chan chan<- config.OrderStruct, rec_main_chan <-chan config.OrderStruct){
+func ElevRunner(elev_cmd_chan chan<- config.ElevCommand, delete_order_chan chan<- config.OrderStruct /*, trans_main_chan chan<- config.OrderStruct, rec_main_chan <-chan config.OrderStruct*/){
   //var current_dir config.MotorDirection
   //var prev_dir config.MotorDirection
   //fsm.RetrieveState()
   var current_state config.ElevStateType = config.Idle
 
-  source_trans_chan := make (chan config.OrderStruct,10)
-  sink_rec_chan     := make (chan config.OrderStruct,10)
+  //trans_chan := make (chan config.OrderStruct)
+  //rec_chan     := make (chan config.OrderStruct)
 
-  floor_chan    := make (chan int)
-  input_queue   := make (chan config.OrderStruct)
-  execute_chan  := make (chan config.OrderStruct)
+  drv_floors  := make(chan int)
+  //input_queue   := make (chan config.OrderStruct)
+  //execute_chan  := make (chan config.OrderStruct)
   wakeup_chan   := make (chan bool)
-  elev_cmd_chan := make (chan config.ElevCommand)
+  //elev_cmd_chan := make (chan config.ElevCommand)
 
-  go executeOrder(execute_chan)
-  go queue.Queue(input_queue, execute_chan, source_trans_chan, sink_rec_chan)
+  //go executeOrder(execute_chan)
+  //go queue.Queue(input_queue, execute_chan, source_trans_chan, sink_rec_chan)
 
-  go IOwrapper(input_queue, floor_chan)
+  //go IOwrapper(input_queue)
   go elevWakeUp(wakeup_chan)
-  go fsm.ElevStateMachine(elev_cmd_chan)
+  //go fsm.ElevStateMachine(elev_cmd_chan)
+  go elevio.PollFloorSensor(drv_floors)
 
   for{
     select{
-    case tmp := <- source_trans_chan:
+    /*case tmp := <- source_trans_chan:
       fmt.Println("tx elevclient",tmp)
       trans_main_chan <- tmp
 
     case tmp := <- rec_main_chan:
       fmt.Println("rx elevclient",tmp)
       sink_rec_chan <- tmp
-
+*/
     
-    case current_floor = <- floor_chan:
-    	current_state = fsm.RetrieveElevState()
+    case current_floor = <- drv_floors:
+      current_state = fsm.RetrieveElevState()
       elevio.SetFloorIndicator(current_floor)
       
-    	switch current_state{
+      switch current_state{
         case config.GoingUp:
-        	if (stopArray[current_floor].stop_up) || (stopArray[current_floor].stop_down && isEmpty(stopArray, current_floor+1, elevio.Num_floors)) {
-	        	//Stop routine
-	        	elev_cmd_chan <- config.FloorReached
-	        	stopArray[current_floor].stop_up = false
-	        	stopArray[current_floor].stop_down = false
-	        	queue.RemoveOrder(current_floor, config.LocalID)
-        		fmt.Println(stopArray)
-        		//for i := 0; i < 3; i++ {
-        			//elevio.SetButtonLamp(config.ButtonType(i), current_floor, false)  //Switch off all lights associated with floor
-        		//}
-
+          if (stopArray[current_floor].stop_up) || (stopArray[current_floor].stop_down && isEmpty(stopArray, current_floor+1, elevio.Num_floors)) {
+            //Stop routine
+            elev_cmd_chan <- config.FloorReached
+            delete_order_chan <- setFloorFalse()
         	}  
         	//Stop again if new order received when at floor with open door 
         	if fsm.RetrieveElevState() == config.AtFloor && (stopArray[current_floor].stop_up || stopArray[current_floor].stop_down) {
-        		elev_cmd_chan <- config.FloorReached
-	        	stopArray[current_floor].stop_up = false
-	        	stopArray[current_floor].stop_down = false
-	        	queue.RemoveOrder(current_floor, config.LocalID)
-        		//fmt.Println(stopArray)
+        	 	elev_cmd_chan <- config.FloorReached
+	        	delete_order_chan <- setFloorFalse()
         	}
 
         	if !isEmpty(stopArray, current_floor+1, elevio.Num_floors){
-            	//fmt.Println(current_state) //Remove prints
             	elev_cmd_chan <- config.GoUp
-          	} else if !isEmpty(stopArray, elevio.Ground_floor, current_floor){
+          } else if !isEmpty(stopArray, elevio.Ground_floor, current_floor){
             	elev_cmd_chan <- config.GoDown
-          	} else{
+          } else{
             	elev_cmd_chan <- config.Finished
-          	}
+          }
+
         case config.GoingDown:
         	if (stopArray[current_floor].stop_down) || (stopArray[current_floor].stop_up && isEmpty(stopArray, elevio.Ground_floor, current_floor)) {
-				//Stop routine
+				    //Stop routine
         		elev_cmd_chan <- config.FloorReached
-        		stopArray[current_floor].stop_up = false
-        		stopArray[current_floor].stop_down = false
-	        	queue.RemoveOrder(current_floor, config.LocalID)
-        		//fmt.Println(stopArray)        		
-
-	        	
-        		//for i := 0; i < 3; i++ {
-        			//elevio.SetButtonLamp(config.ButtonType(i), current_floor, false)  //Switch off all lights associated with floor
-        		//}
+        		delete_order_chan <- setFloorFalse()
+            fmt.Printf("Not Stuck\n")
         	}
         	//Stop again if new order received when at floor with open door 
         	if fsm.RetrieveElevState() == config.AtFloor && (stopArray[current_floor].stop_up || stopArray[current_floor].stop_down) {
         		elev_cmd_chan <- config.FloorReached
-	        	stopArray[current_floor].stop_up = false
-	        	stopArray[current_floor].stop_down = false
-	        	queue.RemoveOrder(current_floor, config.LocalID)
-        		//fmt.Println(stopArray)
+	        	delete_order_chan <- setFloorFalse()
+            fmt.Printf("Not Stuck\n")
+
         	}
+
         	if !isEmpty(stopArray, elevio.Ground_floor, current_floor){
             	elev_cmd_chan <- config.GoDown
-          	} else if !isEmpty(stopArray, current_floor+1, elevio.Num_floors){
+          } else if !isEmpty(stopArray, current_floor+1, elevio.Num_floors){
             	elev_cmd_chan <- config.GoUp
-          	} else{
+          } else{
             	elev_cmd_chan <- config.Finished
-          	}
+          }
         }
         
 
     case <- wakeup_chan:       //Channel dedicated to alert if elevator is idle with orders in stopArray
      	if stopArray[current_floor].stop_up || stopArray[current_floor].stop_down {
 	        elev_cmd_chan <- config.FloorReached
-	        stopArray[current_floor].stop_up = false
-	        stopArray[current_floor].stop_down = false
-	        queue.RemoveOrder(current_floor, config.LocalID)
-
+          delete_order_chan <- setFloorFalse()
+          fmt.Printf("Not Stuck\n")
 	        elev_cmd_chan <- config.Finished
-	        //Turn off lights should be in RemoveArray instead
-	        
-	        //for i := 0; i < 3; i++ {
-	          //elevio.SetButtonLamp(config.ButtonType(i), current_floor, false)  //Switch off all lights associated with floor
-	        //}
 	    } else if !isEmpty(stopArray, elevio.Ground_floor, current_floor){
         	elev_cmd_chan <- config.GoDown
-      	} else if !isEmpty(stopArray, current_floor+1, elevio.Num_floors){
+      } else if !isEmpty(stopArray, current_floor+1, elevio.Num_floors){
         	elev_cmd_chan <- config.GoUp
-      	} else {
+      } else {
         	elev_cmd_chan <- config.Finished
-      	}
+      }
     }
   }
 }
