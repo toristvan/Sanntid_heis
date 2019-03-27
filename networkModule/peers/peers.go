@@ -17,6 +17,9 @@ type PeerUpdate struct {
 const interval = 1000 * time.Millisecond
 const timeout = 50 * time.Millisecond
 
+
+//What does this currently do?
+
 func Transmitter(port int, id string, offline_check chan bool) {
 
 	conn := conn.DialBroadcastUDP(port)

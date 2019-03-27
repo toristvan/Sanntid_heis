@@ -33,18 +33,47 @@ func InitQueue(){
 	orderQueue = que
 }
 
-func costFunction(newFloor int, currentFloor int, dir config.MotorDirection ) int { // IN: currentFloor, Direction, (Queues?) , OUT: Cost
-	floorDiff := (newFloor - currentFloor)
-	cost := floorDiff
-	if floorDiff*int(dir) > 0 && dir != 0 {
-		cost = floorDiff - 1
-	} else if floorDiff*int(dir) < 0 && dir != 0 {
-		cost = floorDiff + 1
-	} else {
-		cost = floorDiff
-	}
-	//Broadcast result with ID
-	return cost
+//Might have weaknesses considering state changes
+func GenericCostFunction(order config.OrderStruct) int {
+  var cost int
+  var distance int = config.Current_floor - order.Floor
+  var abs_distance int
+  if distance < 0 {
+    abs_distance = -distance
+  }else{
+    abs_distance = distance
+  }
+  //in outcommented values; higher cost i better
+  //Put in max cost to make sure always pos?
+  switch fsm.RetrieveElevState(){
+  case config.Idle:
+    cost =  abs_distance - 1 - elevio.Num_floors //config.Num_floors + 1 - abs_distance
+  case config.AtFloor:
+    cost =  abs_distance - elevio.Num_floors//config.Num_floors - abs_distance
+  case config.GoingUp:
+    switch distance < 0{ //set one of the cases to <=
+    case true:
+      cost =  abs_distance //- abs_distance //1
+      //bad way to measure? because long way down
+    case false:
+      cost = abs_distance - 2 - elevio.Num_floors//config.Num_floors + 2 - abs_distance
+    }
+  case config.GoingDown:
+    switch distance < 0{
+    case true:
+      cost = abs_distance - 2 - elevio.Num_floors//config.Num_floors + 2 - abs_distance
+      //Add what way order is going
+    case false:
+      //bad way to measure? because long way up
+      cost = abs_distance //- abs_distance //1
+    }
+  }
+
+  //Add whether or not there are cab calls?
+  //Take into consideration what direction order is going?
+  //Works surprisingly well without these factors
+  fmt.Printf("Cost for %d: %d\n", config.LocalID, cost)
+  return cost
 }
 
 //func dummyCostFunc(hallCall config.ButtonType, floor int, dir config.MotorDirection) int {
@@ -88,7 +117,7 @@ func addToQueue(order config.OrderStruct, current_state config.ElevStateType , i
 		}
 	}
 
-	fmt.Printf("Order added\n")
+	//fmt.Printf("Order added\n")
 	if !(order.Button == config.BT_Cab && id != config.LocalID){
 		elevio.SetButtonLamp(order.Button, order.Floor, true)
 	}
@@ -115,7 +144,7 @@ func RemoveOrder(floor int, id int){
 		elevio.SetButtonLamp(i, floor, false) //BT syntax correct?
 	}
 
-	fmt.Printf("Order removed from queue\n")
+	//fmt.Printf("Order removed from queue\n")
 	/*for i := 0; i < 10; i++ {
 		fmt.Println(orderQueue[1][i].Floor)
 		fmt.Println(orderQueue[1][i].Button)
@@ -161,14 +190,10 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 			}
 		case new_order = <- delete_order_chan:
 			if new_order.Cmd == config.OrdrDelete{
-				fmt.Println("Deleting order")
 				trans_order_chan <- new_order
-				fmt.Println("Order sent for deletion")
-			} else {
-				fmt.Println("Wrong command")
 			}
-		case <- offline_chan:
-		//case offline = <- offline_chan: //sets offline if transmit cant connect to router
+		//case <- offline_chan:
+		case offline = <- offline_chan: //sets offline if transmit cant connect to router
 			//fmt.Println("offline:", offline)
 		}
 	}
@@ -178,7 +203,7 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 
 func ReceiveOrder(add_order_chan chan<- config.OrderStruct, is_dead_chan <-chan bool){
 
-	var lowest_cost int = 10 //max cost
+	var lowest_cost int = config.MaxCost //max cost
 	var best_elev int 	=-1
 	var master bool 	= false
 	var elev_dead bool  = false
@@ -207,7 +232,7 @@ func ReceiveOrder(add_order_chan chan<- config.OrderStruct, is_dead_chan <-chan 
 				if elev_dead { //donst send cost if dead
 					break
 				}
-				new_order.Cost = dummyCostFunc(new_order)//Current CF requires currentfloor and direction. How to fix
+				new_order.Cost = GenericCostFunction(new_order)//dummyCostFunc(new_order)//Current CF requires currentfloor and direction. How to fix
 				new_order.ElevID = config.LocalID
 				new_order.Cmd = config.OrdrAssign
 				trans_conf_chan <- new_order //transmit order cost
@@ -246,7 +271,7 @@ func ReceiveOrder(add_order_chan chan<- config.OrderStruct, is_dead_chan <-chan 
 				new_order.Cmd = config.OrdrAdd
 				trans_conf_chan <- new_order //transmit new order
 				master = false
-				lowest_cost = 10 //maxcost
+				lowest_cost = config.MaxCost //maxcost
 				best_elev = -1
 			}
 			trans_backup_chan <- true
@@ -261,7 +286,7 @@ func Queue(raw_order_chan <-chan config.OrderStruct, distr_order_chan chan<- con
 		select{
 		case new_order := <- raw_order_chan:
 			//Move this to distr order directly
-			fmt.Printf("Button input: %+v , Floor: %+v\n", new_order.Button, new_order.Floor)
+			//fmt.Printf("Button input: %+v , Floor: %+v\n", new_order.Button, new_order.Floor)
 			if !checkIfInQueue(new_order){
 				distr_order_chan <- new_order
 			}

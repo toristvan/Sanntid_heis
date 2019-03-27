@@ -9,9 +9,9 @@ import (
     //"./networkModule/bcast"
     "./networkModule/peers"
     "time"
-    "os/exec"
     ."fmt"
-    "strconv"
+    //"os/exec"
+    //"strconv"
 )
 
 type networkOrderStruct struct{
@@ -43,10 +43,14 @@ func initElevNode() int {
 //Needs to figure out properly when program is frozen. (When backup should take over)
 //Sometimes spawns unexpectedly...
 func backUp(id int, checkbackup_chan chan<- bool){
-    //backUpCmd := exec.Command("gnome-terminal", "-x", "go", "run", "/home/student/Desktop/GR61REAL/project-gruppe-61-real/testmain.go")
+    /*
     //backUpCmd := exec.Command("cmd.exe","/C","start", `c:\Users\torge\Documents\Go-code\project-gruppe-61-real\testmain.go"`)
     //var backup_id int
-    backUpCmd := exec.Command("cmd.exe","/C","start") //For Windows. Åpner et nytt cmd vindu men, har ikke klart å få til å kjøre et nytt go script
+    
+    //For Linux:
+    backUpCmd := exec.Command("gnome-terminal", "-x", "go", "run", "/home/student/Desktop/GR61REAL/project-gruppe-61-real/testmain.go")
+    //For Windows:
+   // backUpCmd := exec.Command("cmd.exe","/C","start") //For Windows. Åpner et nytt cmd vindu men, har ikke klart å få til å kjøre et nytt go script
 
     var backup_id int
     primary_id := strconv.Itoa(id) //from int to string
@@ -88,6 +92,8 @@ func backUp(id int, checkbackup_chan chan<- bool){
 	        }
         }
     }
+    */
+    checkbackup_chan <- true
 
 }
 
@@ -111,15 +117,15 @@ func main() {
     id := initElevNode()
     go backUp(id, checkbackup_chan)
 
-    //elevio.Init(Sprintf("localhost:2000%d", config.LocalID)) //, num_floors)  //For simulators
-    elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
+    elevio.Init(Sprintf("localhost:1000%d", config.LocalID)) //, num_floors)  //For simulators
+    //elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
 
     //Mainloop only runs after backup-check fails (No connection with primary function)
     //Can run without backup if backUp is commented out and only sends bool through checkbackup_chan
     for {
         select{
 		    case <- checkbackup_chan:
-  			  Println("Primary")
+  			  //Println("Primary")
   		    //Tidligere init i queue/Queue
   		    go elevclient.ElevRunner(elev_cmd_chan, delete_order_chan )
   		    go queue.DistributeOrder(distr_order_chan, add_order_chan, delete_order_chan, offline_chan)
