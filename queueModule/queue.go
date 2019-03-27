@@ -9,29 +9,46 @@ import (
 	"time"
 	)
 
-//const num_elevs int  = config.Num_elevs
-//const queue_size int = (elevio.Num_floors*3)-2
+//Move to config
+const Queue_size int = (elevio.Num_floors*3)-2
 
-var num_elevs int
-var queue_size int
-var orderQueue [][] config.OrderStruct
-//var orderQueue [config.Num_elevs][queue_size] config.OrderStruct
+//var orderQueue [][] config.OrderStruct
+var orderQueue [config.Num_elevs][Queue_size] config.OrderStruct
 
 func InitQueue(){
 	var invalidOrder config.OrderStruct
 	invalidOrder.Button = 0
 	invalidOrder.Floor = -1
+	invalidOrder.Cmd = 1
+	/*
 	que := make([][]config.OrderStruct, config.Num_elevs)
 	for n := range que{
 		que[n] = make([]config.OrderStruct, (elevio.Num_floors*3)-2)
-	}
-	for j := 0; j< num_elevs; j++{
-		for i := 0; i< queue_size; i++{
-			que[j][i] = invalidOrder
+	}*/
+	for j := 0; j< config.Num_elevs; j++{
+		for i := 0; i< Queue_size; i++{
+			orderQueue[j][i] = invalidOrder
+			orderQueue[j][i].ElevID = j
 		}
 	}
-	orderQueue = que
 }
+
+func printOrder(order config.OrderStruct){
+  	fmt.Printf("\nID: %d Button: %d Floor: %d Cost: %d Cmd: %d Time: %s\n", order.ElevID, order.Button, order.Floor, order.Cost, order.Cmd, order.Timestamp.String())
+  	//fmt.Println("\nID:",order.ElevID, "  Button:", order.Button, " Floor: ", order.Floor," Cost: ", order.Cost," Cmd: ", order.Cmd)
+	//fmt.Printf("%+v", orderQueue)
+}
+func PrintQueue(){
+	for {
+		//for j := 0; j < config.Num_elevs ; j++{
+		for i := 0 ; i < len(orderQueue[0]) ;  i++{
+			printOrder(orderQueue[config.LocalID][i])		
+		}
+		//} 
+		time.Sleep(5*time.Second)
+	}
+}
+
 
 //Might have weaknesses considering state changes
 func GenericCostFunction(order config.OrderStruct) int {
@@ -85,13 +102,15 @@ func GenericCostFunction(order config.OrderStruct) int {
 func dummyCostFunc(order config.OrderStruct) int {
   return 4 - config.LocalID
 }
-
-func RetriveQueue() [][]config.OrderStruct{
+func SetQueue(new_queue [config.Num_elevs][Queue_size]config.OrderStruct){
+	orderQueue = new_queue
+}
+func RetrieveQueue() [config.Num_elevs][Queue_size]config.OrderStruct{
 	return orderQueue
 }
 
 func insertToQueue(order config.OrderStruct, index int, id int){
-	for i := queue_size - 1; i > index; i--{
+	for i := Queue_size - 1; i > index; i--{
 		orderQueue[id][i] = orderQueue[id][i-1]
 	}
 	order.Timestamp = time.Now()
@@ -114,7 +133,7 @@ func addToQueue(order config.OrderStruct, current_state config.ElevStateType , i
 			insertToQueue(order, 0, id)
 		}
 	} else {
-		for i := 0; i < queue_size; i++{
+		for i := 0; i < Queue_size; i++{
 			if orderQueue[id][i].Floor == -1 {
 				orderQueue[id][i] = order
 				break
@@ -122,7 +141,7 @@ func addToQueue(order config.OrderStruct, current_state config.ElevStateType , i
 		}
 	}
 
-	//fmt.Printf("Order added\n")
+	//fmt.Printf("Order added\n", orderQueue)
 	if !(order.Button == config.BT_Cab && id != config.LocalID){
 		elevio.SetButtonLamp(order.Button, order.Floor, true)
 	}
@@ -133,14 +152,14 @@ func addToQueue(order config.OrderStruct, current_state config.ElevStateType , i
 func RemoveOrder(floor int, id int){
 	var prev config.OrderStruct
 	//Remove for all id's? Have to beware of cab calls.
-	for i := 0; i < queue_size; i++{
+	for i := 0; i < Queue_size; i++{
 		if  orderQueue[id][i].Floor == floor {   //Remove all orders on floor for ID
 			orderQueue[id][i].Floor = -1
 			orderQueue[id][i].Button = 0
 			orderQueue[id][i].ElevID = -1
 		}
 	}
-	for i := 0; i < queue_size-2 ; i++ {
+	for i := 0; i < Queue_size-2 ; i++ {
 		prev = orderQueue[id][i]
 		orderQueue[id][i] = orderQueue[id][i+1]
 		orderQueue[id][i+1] = prev
@@ -158,12 +177,20 @@ func RemoveOrder(floor int, id int){
 }
 
 func checkIfInQueue(order config.OrderStruct) bool{
-	for i := 0; i < num_elevs; i++ {
-		for j := 0; j < queue_size; j++ {
-			if order.Floor == orderQueue[i][j].Floor && order.Button == orderQueue[i][j].Button {
-				return true
+	if order.Button != config.BT_Cab{
+		for i := 0; i < config.Num_elevs; i++ {
+			for j := 0; j < Queue_size; j++ {
+				if order.Floor == orderQueue[i][j].Floor && order.Button == orderQueue[i][j].Button  {
+					return true
+				}
 			}
 		}
+	}else{
+		for j := 0; j < Queue_size; j++ {
+			if order.Floor == orderQueue[config.LocalID][j].Floor  && order.Button == orderQueue[config.LocalID][j].Button{
+				return true
+			}
+		}			
 	}
 	return false
 }
@@ -178,6 +205,7 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 	for{
 		select{
 		case new_order = <- distr_order_chan:
+			fmt.Println("DistributeOrder")
 			if !checkIfInQueue(new_order){
 				switch new_order.Cmd{
 				case config.CostReq:
@@ -205,7 +233,7 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 			}
 		//case <- offline_chan:
 		case offline = <- offline_chan: //sets offline if transmit cant connect to router
-			//fmt.Println("offline:", offline)
+			fmt.Println("offline:", offline)
 		}
 	}
 }
@@ -267,9 +295,7 @@ func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bo
 				if new_order.ElevID != config.LocalID {
 					RemoveOrder(new_order.Floor, new_order.ElevID)
 				}
-
 			}
-
 		case elev_dead = <- is_dead_chan: //If 'dead' e.g motor unplugged
 			fmt.Println("Dead:", elev_dead)
 
@@ -286,24 +312,24 @@ func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bo
 			trans_backup_chan <- true
 		}
 	}
-
-
 }
 
-//func Queue(/*raw_order_chan <-chan config.OrderStruct, distr_order_chan chan<- config.OrderStruct, add_order_chan <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct*/) {
-//	for {
-//		select{
-		//case new_order := <- raw_order_chan:
-			//Move this to distr order directly
-			//if !checkIfInQueue(new_order){
-			//	distr_order_chan <- new_order
-			//}
+/*
+func SpamOrder(spam_chan chan<- config.OrderStruct){
+	var dummyorder config.OrderStruct
+	dummyorder.ElevID = config.LocalID
+    dummyorder.Button    = config.BT_Cab
+    dummyorder.MasterID  = config.LocalID
+    dummyorder.Cmd = config.OrdrAdd
+	for {
+		time.Sleep(5*time.Second)
+		dummyorder.Floor = 3
+		spam_chan <- dummyorder
 
-		//case order_to_add := <-add_order_chan:
-		//	addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID) //Set lights
-		//	if order_to_add.ElevID == config.LocalID{
-		//		execute_chan <- order_to_add
-		//	}
-//		}
-//	}
-//}
+		time.Sleep(5*time.Second)
+		dummyorder.Floor = 0
+		spam_chan <- dummyorder
+
+	}
+}
+*/
