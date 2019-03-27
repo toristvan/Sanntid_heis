@@ -5,18 +5,19 @@ import (
 	"time"
 )
 const MaxCost int = 10 // Num_floors +2
+const Num_elevs int = 3
+//const Num_floors int = 4
 
 var LocalID int
-var Num_elevs int
 var Order_port int
 var Backup_port	int
 
+
 var Current_floor int
 
-func InitConfigData(id int, num_of_elevs int){
+func InitConfigData(id int){
 	LocalID   = id
-	Num_elevs = num_of_elevs
-	Backup_port	= 20070 + LocalID
+	Backup_port	= 20070 //+ LocalID
 	Order_port = 20005
 	fmt.Println("Configuration data initiated")
 }
