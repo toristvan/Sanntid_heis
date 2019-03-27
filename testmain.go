@@ -100,8 +100,8 @@ func backUp(id int, checkbackup_chan chan<- bool){
 
 func main() {
     //Queue channels
-    add_order_chan := make(chan config.OrderStruct)
-    distr_order_chan := make(chan config.OrderStruct)
+    //add_order_chan := make(chan config.OrderStruct)
+    //distr_order_chan := make(chan config.OrderStruct)
     delete_order_chan := make(chan config.OrderStruct)
     is_dead_chan := make (chan bool)
 
@@ -117,7 +117,7 @@ func main() {
     id := initElevNode()
     go backUp(id, checkbackup_chan)
 
-    elevio.Init(Sprintf("localhost:1000%d", config.LocalID)) //, num_floors)  //For simulators
+    elevio.Init(Sprintf("localhost:2000%d", config.LocalID)) //, num_floors)  //For simulators
     //elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
 
     //Mainloop only runs after backup-check fails (No connection with primary function)
@@ -128,15 +128,15 @@ func main() {
   			  //Println("Primary")
   		    //Tidligere init i queue/Queue
   		    go elevclient.ElevRunner(elev_cmd_chan, delete_order_chan )
-  		    go queue.DistributeOrder(distr_order_chan, add_order_chan, delete_order_chan, offline_chan)
-  		    go queue.ReceiveOrder(add_order_chan, is_dead_chan)
+  		    go queue.DistributeOrder(raw_order_chan, execute_chan, delete_order_chan, offline_chan)
+  		    go queue.ReceiveOrder(execute_chan, is_dead_chan)
 
       		go elevclient.IsElevDead(is_dead_chan)
   		    go peers.CheckOffline(20003, offline_chan)
 
   		    //Tidligere Init i elevatorClient/ElevRunner
   		    go elevclient.IOwrapper(raw_order_chan)
-  		    go queue.Queue(raw_order_chan, distr_order_chan, add_order_chan ,execute_chan)
+  		    //go queue.Queue(/*raw_order_chan,*/ distr_order_chan, add_order_chan ,execute_chan)
   		    go fsm.ElevStateMachine(elev_cmd_chan)
   		    go elevclient.ExecuteOrder(execute_chan)
 		default:

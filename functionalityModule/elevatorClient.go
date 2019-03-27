@@ -5,9 +5,8 @@ import (
     "../queueModule"
     "../fsmModule"
     "../configPackage"
-    //"fmt"
+    "fmt"
     "time"
-    //"math"
 )
 
 type floorStatus struct{
@@ -57,7 +56,7 @@ func ExecuteOrder(execute_chan <-chan config.OrderStruct){ //, pending_orders ch
     case config.BT_Cab:
     	stopArray[new_order.Floor].stop_up = true
     	stopArray[new_order.Floor].stop_down = true
-
+      fmt.Printf("Added to stopArray\n") //To check for crash when going idle for long
     }
   }
 }

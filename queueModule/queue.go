@@ -47,11 +47,16 @@ func GenericCostFunction(order config.OrderStruct) int {
   //Put in max cost to make sure always pos?
   switch fsm.RetrieveElevState(){
   case config.Idle:
-    cost =  abs_distance - 1 - elevio.Num_floors //config.Num_floors + 1 - abs_distance
+  	switch distance == 0{
+  	case true:
+  		cost = abs_distance - 3 - elevio.Num_floors //best option
+  	case false:
+    	cost =  abs_distance - 1 - elevio.Num_floors //config.Num_floors + 1 - abs_distance
+  	}
   case config.AtFloor:
     cost =  abs_distance - elevio.Num_floors//config.Num_floors - abs_distance
   case config.GoingUp:
-    switch distance < 0{ //set one of the cases to <=
+    switch distance < 0{ 
     case true:
       cost =  abs_distance //- abs_distance //1
       //bad way to measure? because long way down
@@ -163,7 +168,7 @@ func checkIfInQueue(order config.OrderStruct) bool{
 	return false
 }
 
-func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan chan<- config.OrderStruct, delete_order_chan <-chan config.OrderStruct, offline_chan <-chan bool){
+func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct, delete_order_chan <-chan config.OrderStruct, offline_chan <-chan bool){
 	var new_order config.OrderStruct
 	var offline bool = false
 	trans_order_chan	:= make (chan config.OrderStruct)
@@ -173,20 +178,26 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 	for{
 		select{
 		case new_order = <- distr_order_chan:
-			switch new_order.Cmd{
-			case config.CostReq:
-				new_order.Cmd = config.CostSend
-				if offline{ //Take order self if offline
-					new_order.ElevID = config.LocalID
-					add_order_chan <- new_order
-				} else{
+			if !checkIfInQueue(new_order){
+				switch new_order.Cmd{
+				case config.CostReq:
+					new_order.Cmd = config.CostSend
+					if offline{ //Take order self if offline
+						new_order.ElevID = config.LocalID
+						//add_order_chan <- new_order
+						addToQueue(new_order, fsm.RetrieveElevState(), new_order.ElevID)
+						execute_chan <- new_order
+					} else{
+						trans_order_chan <- new_order
+					}
+				case config.OrdrAdd:
+					//add_order_chan <- new_order
+					addToQueue(new_order, fsm.RetrieveElevState(), new_order.ElevID)
+					execute_chan <- new_order
+					new_order.Cmd = config.OrdrConf
+					new_order.Cost = -1 //cabcall
 					trans_order_chan <- new_order
 				}
-			case config.OrdrAdd:
-				add_order_chan <- new_order
-				new_order.Cmd = config.OrdrConf
-				new_order.Cost = -1 //cabcall
-				trans_order_chan <- new_order
 			}
 		case new_order = <- delete_order_chan:
 			if new_order.Cmd == config.OrdrDelete{
@@ -201,24 +212,20 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 
 
 
-func ReceiveOrder(add_order_chan chan<- config.OrderStruct, is_dead_chan <-chan bool){
+func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bool){
 
 	var lowest_cost int = config.MaxCost //max cost
 	var best_elev int 	=-1
 	var master bool 	= false
 	var elev_dead bool  = false
-
 	var new_order config.OrderStruct
-
-
 
 	rec_order_chan		:= make (chan config.OrderStruct)
 	trans_conf_chan		:= make (chan config.OrderStruct)
 	trans_backup_chan	:= make (chan bool)
 
-
 	go bcast.Receiver(config.Order_port, rec_order_chan)
-	go bcast.Transmitter(config.Order_port/*, offline_alert_chan*/, trans_conf_chan)  //La inn egen channel for å sende fra Receiverenden, slik at de ikke krasjer. Dårlig løsning?
+	go bcast.Transmitter(config.Order_port/*, offline_alert_chan*/, trans_conf_chan)  //Channel to send orders
 	go bcast.Transmitter(config.Backup_port/*, offline_backup_chan*/, trans_backup_chan)  //Channel to send heartbeat to backup
 
 	for {
@@ -226,7 +233,6 @@ func ReceiveOrder(add_order_chan chan<- config.OrderStruct, is_dead_chan <-chan 
 		defer assign_timeout.Stop()
 		select{
 		case new_order = <-rec_order_chan:
-
 			switch new_order.Cmd{
 			case config.CostSend:
 				if elev_dead { //donst send cost if dead
@@ -246,13 +252,16 @@ func ReceiveOrder(add_order_chan chan<- config.OrderStruct, is_dead_chan <-chan 
 				}
 			case config.OrdrAdd:
 				if new_order.ElevID == config.LocalID{
-					add_order_chan <- new_order //add order to queue
+					addToQueue(new_order, fsm.RetrieveElevState(), new_order.ElevID)
+					execute_chan <- new_order //add to stopArray
+					//add_order_chan <- new_order //add order to queue
 					new_order.Cmd = config.OrdrConf
 					trans_conf_chan <- new_order //transmit order confirmation
 				}
 			case config.OrdrConf:
 				if new_order.ElevID != config.LocalID{
-					add_order_chan <- new_order
+					//add_order_chan <- new_order
+					addToQueue(new_order, fsm.RetrieveElevState(), new_order.ElevID)
 				}
 			case config.OrdrDelete:
 				if new_order.ElevID != config.LocalID {
@@ -281,21 +290,20 @@ func ReceiveOrder(add_order_chan chan<- config.OrderStruct, is_dead_chan <-chan 
 
 }
 
-func Queue(raw_order_chan <-chan config.OrderStruct, distr_order_chan chan<- config.OrderStruct, add_order_chan <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct/*, trans_main_chan chan<- config.OrderStruct, rec_main_chan <-chan config.OrderStruct*/) {
-	for {
-		select{
-		case new_order := <- raw_order_chan:
+//func Queue(/*raw_order_chan <-chan config.OrderStruct, distr_order_chan chan<- config.OrderStruct, add_order_chan <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct*/) {
+//	for {
+//		select{
+		//case new_order := <- raw_order_chan:
 			//Move this to distr order directly
-			//fmt.Printf("Button input: %+v , Floor: %+v\n", new_order.Button, new_order.Floor)
-			if !checkIfInQueue(new_order){
-				distr_order_chan <- new_order
-			}
+			//if !checkIfInQueue(new_order){
+			//	distr_order_chan <- new_order
+			//}
 
-		case order_to_add := <-add_order_chan:
-			addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID) //Set lights
-			if order_to_add.ElevID == config.LocalID{
-				execute_chan <- order_to_add
-			}
-		}
-	}
-}
+		//case order_to_add := <-add_order_chan:
+		//	addToQueue(order_to_add, fsm.RetrieveElevState(), order_to_add.ElevID) //Set lights
+		//	if order_to_add.ElevID == config.LocalID{
+		//		execute_chan <- order_to_add
+		//	}
+//		}
+//	}
+//}
