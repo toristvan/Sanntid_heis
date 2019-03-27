@@ -4,7 +4,7 @@ import (
     "../driverModule/elevio"
     "../fsmModule"
     "../configPackage"
-    "fmt"
+    //"fmt"
     "time"
 )
 
@@ -17,7 +17,7 @@ func IsElevDead(is_dead_chan chan<- bool){
 		for fsm.RetrieveElevState() == config.GoingUp || fsm.RetrieveElevState() == config.GoingDown {
 			deadTimer := time.NewTicker(5*time.Second)
 			defer deadTimer.Stop()
-			fmt.Println("Waiting for floor....")
+			//fmt.Println("Waiting for floor....")
 			select{
 			case <- drv_floors:
 				if dead{

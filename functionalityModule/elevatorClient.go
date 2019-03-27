@@ -61,7 +61,7 @@ func ExecuteOrder(execute_chan <-chan config.OrderStruct){ //, pending_orders ch
   }
 }
 
-func IOwrapper(raw_order_chan chan<- config.OrderStruct){
+func IOwrapper(distr_order_chan chan<- config.OrderStruct){
   drv_buttons := make(chan config.ButtonEvent)
   go elevio.PollButtons(drv_buttons)
 
@@ -79,7 +79,7 @@ func IOwrapper(raw_order_chan chan<- config.OrderStruct){
         new_order.Cmd = config.OrdrAdd
       }
 
-      raw_order_chan <- new_order
+      distr_order_chan <- new_order
   }
 }
 
