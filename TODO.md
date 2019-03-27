@@ -8,7 +8,6 @@
 
 ## Queue:
 
-* Is Queue() unnecessary?
 * Work actual orderQueue into watchdog?
 * Look at RemoveOrder() purpose of second for loop? Are we moving orders to beginning, is it necessary?
 * Look at addToQueue(), is optimization logic necessary when we have stopArray()?
@@ -25,7 +24,15 @@
 * Backup sends all orders and makes requesting elev add to queue
 * Implement request backup upon going online after offline (Can make elev start in offline, and once gone online will request backup? 2-in-1 functionality)
 
+*The backup sent and backup received do not seem to be the same. The sent seems to be correct. The received is correct format, but only zeros.
+*Tried printing from transmitter and receiver-functions. Seems like even the transmitting node receives only zeros. Might not be possible to send....
+
+
+## Dead:
+
+*Ay OK?
 
 ## Issues:
 
-* Program crashes if stays idle for too long... :( Queue becomes full?
+* Program crashes if stays idle for too long... :( Queue becomes full? Does not crash if being fed orders
+
