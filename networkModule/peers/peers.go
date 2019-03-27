@@ -47,13 +47,20 @@ func Transmitter(port int, id string, offline_check chan bool) {
 //function to check if node can connect to router
 //Logic for not writing to channel continously can be implemented
 func CheckOffline(port int, offline_chan chan<- bool){
+	var offline bool = false
 	for {
 		addr,_ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 		_, err := net.DialUDP("udp4", nil, addr)
 		if err != nil{
-			offline_chan <- true
+			if !offline{
+				offline = true
+				offline_chan <- offline
+			}
 		} else {
-			offline_chan <- false
+			if offline{
+				offline = false
+				offline_chan <- offline
+			}
 		}
 		time.Sleep(1*time.Second)
 	}
