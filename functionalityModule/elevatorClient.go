@@ -21,7 +21,7 @@ func initStopArray(){
     stopArray[i].stop_up = false
     stopArray[i].stop_down = false
   }
-} 
+}
 
 func isEmpty(arr [elevio.Num_floors]floorStatus, from int, to int) bool{
   	for i := from ; i < to ; i++{
@@ -45,7 +45,6 @@ func elevWakeUp(wakeup_chan chan<- bool){
 
 func ExecuteOrder(execute_chan <-chan config.OrderStruct){ //, pending_orders chan<- floorStatus){
   for {
-
     new_order := <- execute_chan   //Input from queue
 
     switch new_order.Button{
@@ -62,9 +61,7 @@ func ExecuteOrder(execute_chan <-chan config.OrderStruct){ //, pending_orders ch
 }
 
 func IOwrapper(raw_order_chan chan<- config.OrderStruct){
-
   drv_buttons := make(chan config.ButtonEvent)
-
   go elevio.PollButtons(drv_buttons)
 
   for{
@@ -87,7 +84,7 @@ func IOwrapper(raw_order_chan chan<- config.OrderStruct){
 
 func setFloorFalse() config.OrderStruct{
   var order_to_delete config.OrderStruct
-  
+
   order_to_delete.Floor = current_floor
   order_to_delete.ElevID = config.LocalID
   order_to_delete.Cmd = config.OrdrDelete
@@ -96,7 +93,7 @@ func setFloorFalse() config.OrderStruct{
   stopArray[current_floor].stop_down = false
   queue.RemoveOrder(current_floor, config.LocalID)
   return order_to_delete
-  
+
 }
 
 
@@ -115,15 +112,15 @@ func ElevRunner(elev_cmd_chan chan<- config.ElevCommand, delete_order_chan chan<
     case current_floor = <- drv_floors:
       current_state = fsm.RetrieveElevState()
       elevio.SetFloorIndicator(current_floor)
-      
+
       switch current_state{
         case config.GoingUp:
           if (stopArray[current_floor].stop_up) || (stopArray[current_floor].stop_down && isEmpty(stopArray, current_floor+1, elevio.Num_floors)) {
             //Stop routine
             elev_cmd_chan <- config.FloorReached
             delete_order_chan <- setFloorFalse()
-        	}  
-        	//Stop again if new order received when at floor with open door 
+        	}
+        	//Stop again if new order received when at floor with open door
         	if fsm.RetrieveElevState() == config.AtFloor && (stopArray[current_floor].stop_up || stopArray[current_floor].stop_down) {
         	 	elev_cmd_chan <- config.FloorReached
 	        	delete_order_chan <- setFloorFalse()
@@ -143,7 +140,7 @@ func ElevRunner(elev_cmd_chan chan<- config.ElevCommand, delete_order_chan chan<
         		elev_cmd_chan <- config.FloorReached
         		delete_order_chan <- setFloorFalse()
         	}
-        	//Stop again if new order received when at floor with open door 
+        	//Stop again if new order received when at floor with open door
         	if fsm.RetrieveElevState() == config.AtFloor && (stopArray[current_floor].stop_up || stopArray[current_floor].stop_down) {
         		elev_cmd_chan <- config.FloorReached
 	        	delete_order_chan <- setFloorFalse()

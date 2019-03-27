@@ -14,7 +14,7 @@ type PeerUpdate struct {
 	Lost  []string
 }
 
-const interval = 15 * time.Millisecond
+const interval = 1000 * time.Millisecond
 const timeout = 50 * time.Millisecond
 
 func Transmitter(port int, id string, offline_check chan bool) {
@@ -22,20 +22,23 @@ func Transmitter(port int, id string, offline_check chan bool) {
 	conn := conn.DialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 
-	enable := true
+	//enable := true
 	for {
-		select {
-		case 
-		enable = <-offline_check
-		case <-time.After(interval):
-		}
-			if enable {
-				_, err := conn.WriteTo([]byte(id), addr)
-				
+			//enable = <-offline_check
+			transmitTicker := time.NewTicker(interval)
+			select {
+			//case <-time.After(interval):
+			case <- transmitTicker.C:
+				//if enable {
+					_, err := conn.WriteTo([]byte(id), addr)
+					if err != nil {
+							fmt.Println(err)
+					}
+				//}
 			}
 		}
-	}
 }
+
 
 
 //function to check if node can connect to router

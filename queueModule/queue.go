@@ -12,8 +12,8 @@ import (
 //const num_elevs int  = config.Num_elevs
 //const queue_size int = (elevio.Num_floors*3)-2
 
-var num_elevs int 
-var queue_size int 
+var num_elevs int
+var queue_size int
 var orderQueue [][] config.OrderStruct
 //var orderQueue [config.Num_elevs][queue_size] config.OrderStruct
 
@@ -67,7 +67,7 @@ func insertToQueue(order config.OrderStruct, index int, id int){
 //Replace with motordir?
 // Make sure lights are only set when we know order will be executed
 // For example, when added to queue.
-func addToQueue(order config.OrderStruct, current_state config.ElevStateType , id int) { 
+func addToQueue(order config.OrderStruct, current_state config.ElevStateType , id int) {
 
 	if orderQueue[id][0].Floor == -1{
 		insertToQueue(order, 0, id)
@@ -120,7 +120,7 @@ func RemoveOrder(floor int, id int){
 		fmt.Println(orderQueue[1][i].Floor)
 		fmt.Println(orderQueue[1][i].Button)
 	}*/
-	
+
 }
 
 func checkIfInQueue(order config.OrderStruct) bool{
@@ -167,8 +167,9 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, add_order_chan 
 			} else {
 				fmt.Println("Wrong command")
 			}
-		case offline = <- offline_chan: //sets offline if transmit cant connect to router
-			fmt.Println("offline:", offline)
+		case <- offline_chan:
+		//case offline = <- offline_chan: //sets offline if transmit cant connect to router
+			//fmt.Println("offline:", offline)
 		}
 	}
 }
@@ -181,7 +182,7 @@ func ReceiveOrder(add_order_chan chan<- config.OrderStruct, is_dead_chan <-chan 
 	var best_elev int 	=-1
 	var master bool 	= false
 	var elev_dead bool  = false
-	
+
 	var new_order config.OrderStruct
 
 
@@ -234,7 +235,7 @@ func ReceiveOrder(add_order_chan chan<- config.OrderStruct, is_dead_chan <-chan 
 				}
 
 			}
-		
+
 		case elev_dead = <- is_dead_chan: //If 'dead' e.g motor unplugged
 			fmt.Println("Dead:", elev_dead)
 
@@ -273,4 +274,3 @@ func Queue(raw_order_chan <-chan config.OrderStruct, distr_order_chan chan<- con
 		}
 	}
 }
-
