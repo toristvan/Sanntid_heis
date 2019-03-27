@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"time"
 )
+const MaxCost int = 10 // Num_floors +2
 
 var LocalID int
 var Num_elevs int
 var Order_port int
 var Backup_port	int
+
+var Current_floor int
 
 func InitConfigData(id int, num_of_elevs int){
 	LocalID   = id

@@ -7,13 +7,15 @@ import (
     "../configPackage"
     //"fmt"
     "time"
+    //"math"
 )
 
 type floorStatus struct{
   stop_up bool
   stop_down bool
 }
-var current_floor int
+
+//var config.Current_floor int
 var stopArray[elevio.Num_floors] floorStatus
 
 func initStopArray(){
@@ -85,13 +87,13 @@ func IOwrapper(raw_order_chan chan<- config.OrderStruct){
 func setFloorFalse() config.OrderStruct{
   var order_to_delete config.OrderStruct
 
-  order_to_delete.Floor = current_floor
+  order_to_delete.Floor = config.Current_floor
   order_to_delete.ElevID = config.LocalID
   order_to_delete.Cmd = config.OrdrDelete
 
-  stopArray[current_floor].stop_up = false
-  stopArray[current_floor].stop_down = false
-  queue.RemoveOrder(current_floor, config.LocalID)
+  stopArray[config.Current_floor].stop_up = false
+  stopArray[config.Current_floor].stop_down = false
+  queue.RemoveOrder(config.Current_floor, config.LocalID)
   return order_to_delete
 
 }
@@ -109,60 +111,60 @@ func ElevRunner(elev_cmd_chan chan<- config.ElevCommand, delete_order_chan chan<
 
   for{
     select{
-    case current_floor = <- drv_floors:
+    case config.Current_floor = <- drv_floors:
       current_state = fsm.RetrieveElevState()
-      elevio.SetFloorIndicator(current_floor)
+      elevio.SetFloorIndicator(config.Current_floor)
 
       switch current_state{
         case config.GoingUp:
-          if (stopArray[current_floor].stop_up) || (stopArray[current_floor].stop_down && isEmpty(stopArray, current_floor+1, elevio.Num_floors)) {
+          if (stopArray[config.Current_floor].stop_up) || (stopArray[config.Current_floor].stop_down && isEmpty(stopArray, config.Current_floor+1, elevio.Num_floors)) {
             //Stop routine
             elev_cmd_chan <- config.FloorReached
             delete_order_chan <- setFloorFalse()
         	}
         	//Stop again if new order received when at floor with open door
-        	if fsm.RetrieveElevState() == config.AtFloor && (stopArray[current_floor].stop_up || stopArray[current_floor].stop_down) {
+        	if fsm.RetrieveElevState() == config.AtFloor && (stopArray[config.Current_floor].stop_up || stopArray[config.Current_floor].stop_down) {
         	 	elev_cmd_chan <- config.FloorReached
 	        	delete_order_chan <- setFloorFalse()
         	}
 
-        	if !isEmpty(stopArray, current_floor+1, elevio.Num_floors){
+        	if !isEmpty(stopArray, config.Current_floor+1, elevio.Num_floors){
             	elev_cmd_chan <- config.GoUp
-          } else if !isEmpty(stopArray, elevio.Ground_floor, current_floor){
+          } else if !isEmpty(stopArray, elevio.Ground_floor, config.Current_floor){
             	elev_cmd_chan <- config.GoDown
           } else{
             	elev_cmd_chan <- config.Finished
           }
 
         case config.GoingDown:
-        	if (stopArray[current_floor].stop_down) || (stopArray[current_floor].stop_up && isEmpty(stopArray, elevio.Ground_floor, current_floor)) {
+        	if (stopArray[config.Current_floor].stop_down) || (stopArray[config.Current_floor].stop_up && isEmpty(stopArray, elevio.Ground_floor, config.Current_floor)) {
 				    //Stop routine
         		elev_cmd_chan <- config.FloorReached
         		delete_order_chan <- setFloorFalse()
         	}
         	//Stop again if new order received when at floor with open door
-        	if fsm.RetrieveElevState() == config.AtFloor && (stopArray[current_floor].stop_up || stopArray[current_floor].stop_down) {
+        	if fsm.RetrieveElevState() == config.AtFloor && (stopArray[config.Current_floor].stop_up || stopArray[config.Current_floor].stop_down) {
         		elev_cmd_chan <- config.FloorReached
 	        	delete_order_chan <- setFloorFalse()
 
         	}
 
-        	if !isEmpty(stopArray, elevio.Ground_floor, current_floor){
+        	if !isEmpty(stopArray, elevio.Ground_floor, config.Current_floor){
             	elev_cmd_chan <- config.GoDown
-          } else if !isEmpty(stopArray, current_floor+1, elevio.Num_floors){
+          } else if !isEmpty(stopArray, config.Current_floor+1, elevio.Num_floors){
             	elev_cmd_chan <- config.GoUp
           } else{
             	elev_cmd_chan <- config.Finished
           }
         }
     case <- wakeup_chan:       //Channel dedicated to alert if elevator is idle with orders in stopArray
-     	if stopArray[current_floor].stop_up || stopArray[current_floor].stop_down {
+     	if stopArray[config.Current_floor].stop_up || stopArray[config.Current_floor].stop_down {
 	        elev_cmd_chan <- config.FloorReached
           delete_order_chan <- setFloorFalse()
 	        elev_cmd_chan <- config.Finished
-	    } else if !isEmpty(stopArray, elevio.Ground_floor, current_floor){
+	    } else if !isEmpty(stopArray, elevio.Ground_floor, config.Current_floor){
         	elev_cmd_chan <- config.GoDown
-      } else if !isEmpty(stopArray, current_floor+1, elevio.Num_floors){
+      } else if !isEmpty(stopArray, config.Current_floor+1, elevio.Num_floors){
         	elev_cmd_chan <- config.GoUp
       } else {
         	elev_cmd_chan <- config.Finished
