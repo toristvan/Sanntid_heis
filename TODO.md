@@ -22,19 +22,21 @@
 
 ## Backup:
 
-* Enable request backup signal at startup/ e.g. ignored if all queues are empty
-* Backup sends all orders and makes requesting elev add to queue
-* Implement request backup upon going online after offline (Can make elev start in offline, and once gone online will request backup? 2-in-1 functionality)
+* [DONE] Enable request backup signal at startup/ e.g. ignored if all queues are empty
+* [DONE] Backup sends all orders and makes requesting elev add to queue
+* [NOT DONE THIS] Implement request backup upon going online after offline (Can make elev start in offline, and once gone online will request backup? 2-in-1 functionality)
 
-*The backup sent and backup received do not seem to be the same. The sent seems to be correct. The received is correct format, but only zeros.
-*Tried printing from transmitter and receiver-functions. Seems like even the transmitting node receives only zeros. Might not be possible to send....
 
 
 ## Dead:
 
-*Needs to tell others it's dead, so they'll take orders. Can retransmit immediately in dist, but then loses channel value in rec.
+*Needs to tell others it's dead, so they'll take orders.
 
 ## Issues:
 
 * Program crashes if stays idle for too long... :( Queue becomes full? Does not crash if being fed orders
+* Frequent last prints before Crash:
+* Idle
+* Order confirmation Received
+* Distribute order (often prints while crashed as well)
 
