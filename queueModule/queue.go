@@ -16,21 +16,22 @@ const Queue_size int = (elevio.Num_floors*3)-2
 var orderQueue [config.Num_elevs][Queue_size] config.OrderStruct
 
 func InitQueue(){
-	var invalidOrder config.OrderStruct
-	invalidOrder.Button = 0
-	invalidOrder.Floor = -1
-	invalidOrder.Cmd = 1
-	/*
-	que := make([][]config.OrderStruct, config.Num_elevs)
-	for n := range que{
-		que[n] = make([]config.OrderStruct, (elevio.Num_floors*3)-2)
-	}*/
 	for j := 0; j< config.Num_elevs; j++{
 		for i := 0; i< Queue_size; i++{
-			orderQueue[j][i] = invalidOrder
+			orderQueue[j][i] = invalidateOrder(orderQueue[j][i]) 
 			orderQueue[j][i].ElevID = j
 		}
 	}
+}
+
+func invalidateOrder(order config.OrderStruct) config.OrderStruct {
+	order.Button = config.BT_Invalid
+	order.Floor = -1
+	order.Cost = config.MaxCost
+	order.Cmd = config.OrdrInv
+	order.MasterID = -1
+	order.SenderID = -1
+	return order
 }
 
 func printOrder(order config.OrderStruct){
@@ -102,47 +103,50 @@ func GenericCostFunction(order config.OrderStruct) int {
 func dummyCostFunc(order config.OrderStruct) int {
   return 4 - config.LocalID
 }
+/*
 func SetQueue(new_queue [config.Num_elevs][Queue_size]config.OrderStruct){
 	orderQueue = new_queue
-}
+}*/
+
 func RetrieveQueue() [config.Num_elevs][Queue_size]config.OrderStruct{
 	return orderQueue
 }
 
-func insertToQueue(order config.OrderStruct, index int, id int){
+func insertToQueue(order config.OrderStruct, index int){
 	for i := Queue_size - 1; i > index; i--{
-		orderQueue[id][i] = orderQueue[id][i-1]
+		orderQueue[order.ElevID][i] = orderQueue[order.ElevID][i-1]
 	}
 	order.Timestamp = time.Now()
-	orderQueue[id][index] = order
+	printOrder(order)
+	orderQueue[order.ElevID][index] = order
 }
 
 //Replace with motordir?
 // Make sure lights are only set when we know order will be executed
 // For example, when added to queue.
-func addToQueue(order config.OrderStruct, current_state config.ElevStateType , id int) {
-
-	if orderQueue[id][0].Floor == -1{
-		insertToQueue(order, 0, id)
-	} else if current_state == config.GoingUp {
-		if order.Floor < orderQueue[id][0].Floor {
-			insertToQueue(order, 0, id)
+func addToQueue(order config.OrderStruct, set_lights bool) {
+	current_state := fsm.RetrieveElevState()
+	if orderQueue[order.ElevID][0].Floor == -1{
+		insertToQueue(order, 0)
+	} else if current_state == config.GoingUp && order.ElevID == config.LocalID{
+		if order.Floor < orderQueue[order.ElevID][0].Floor {
+			insertToQueue(order, 0)
 		}
-	} else if current_state == config.GoingDown {
-		if order.Floor > orderQueue[id][0].Floor {
-			insertToQueue(order, 0, id)
+	} else if current_state == config.GoingDown && order.ElevID == config.LocalID{
+		if order.Floor > orderQueue[order.ElevID][0].Floor {
+			insertToQueue(order, 0)
 		}
 	} else {
 		for i := 0; i < Queue_size; i++{
-			if orderQueue[id][i].Floor == -1 {
-				orderQueue[id][i] = order
+			if orderQueue[order.ElevID][i].Floor == -1 {
+				insertToQueue(order, i)
 				break
 			}
 		}
 	}
 
-	//fmt.Printf("Order added\n", orderQueue)
-	if !(order.Button == config.BT_Cab && id != config.LocalID){
+	fmt.Printf("Order added\n")
+	if set_lights && !(order.Button == config.BT_Cab && order.ElevID != config.LocalID){
 		elevio.SetButtonLamp(order.Button, order.Floor, true)
 	}
 }
@@ -150,7 +154,7 @@ func addToQueue(order config.OrderStruct, current_state config.ElevStateType , i
 //Sletter alle ordre med oppgitt etasje i.
 //Kan evt bare slette dem med gitt retning, men er det vits?
 func RemoveOrder(floor int, id int){
-	var prev config.OrderStruct
+	//var prev config.OrderStruct
 	//Remove for all id's? Have to beware of cab calls.
 	for i := 0; i < Queue_size; i++{
 		if  orderQueue[id][i].Floor == floor {   //Remove all orders on floor for ID
@@ -159,13 +163,13 @@ func RemoveOrder(floor int, id int){
 			orderQueue[id][i].ElevID = -1
 		}
 	}
-	for i := 0; i < Queue_size-2 ; i++ {
+	/*for i := 0; i < Queue_size-2 ; i++ {
 		prev = orderQueue[id][i]
 		orderQueue[id][i] = orderQueue[id][i+1]
 		orderQueue[id][i+1] = prev
-	}
+	}*/
 	for i := config.BT_HallUp; i <= config.BT_Cab  ; i++{ //
-		elevio.SetButtonLamp(i, floor, false) //BT syntax correct?
+		elevio.SetButtonLamp(config.ButtonType(i), floor, false) //BT syntax correct?
 	}
 
 	//fmt.Printf("Order removed from queue\n")
@@ -204,8 +208,6 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 	//Make order chan bigger, so not freeze as easily?
 	for{
 		select{
-		case <- retransmit_last_order_chan:
-			trans_order_chan <- new_order
 		case new_order = <- distr_order_chan:
 			fmt.Println("DistributeOrder")
 			if !checkIfInQueue(new_order){
@@ -214,25 +216,33 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 					new_order.Cmd = config.CostSend
 					if offline{ //Take order self if offline
 						new_order.ElevID = config.LocalID
-						//add_order_chan <- new_order
-						addToQueue(new_order, fsm.RetrieveElevState(), new_order.ElevID)
+						addToQueue(new_order, true)
 						execute_chan <- new_order
 					} else{
 						trans_order_chan <- new_order
 					}
 				case config.OrdrAdd:
-					//add_order_chan <- new_order
-					addToQueue(new_order, fsm.RetrieveElevState(), new_order.ElevID)
-					execute_chan <- new_order
-					new_order.Cmd = config.OrdrConf
 					new_order.Cost = -1 //cabcall
 					trans_order_chan <- new_order
+				//Add watchdog hallcall to own queue, and transmit adding
+				case config.OrdrRetrans:
+					new_order.Cmd = config.OrdrAdd
+					new_order.ElevID = config.LocalID
+					addToQueue(new_order, true)
+					execute_chan <- new_order
+					trans_order_chan <- new_order
 				}
+			//Retransmit watchdog cabcall to designated elevator
+			} else if new_order.Cmd == config.OrdrRetrans {
+				new_order.Cmd = config.OrdrAdd
+				trans_order_chan <- new_order
 			}
 		case new_order = <- delete_order_chan:
 			if new_order.Cmd == config.OrdrDelete{
 				trans_order_chan <- new_order
 			}
+		case <- retransmit_last_order_chan:
+			trans_order_chan <- new_order //what if new_order changes? What if cab call?
 		//case <- offline_chan:
 		case offline = <- offline_chan: //sets offline if transmit cant connect to router
 			fmt.Println("offline:", offline)
@@ -252,11 +262,11 @@ func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bo
 
 	rec_order_chan		:= make (chan config.OrderStruct)
 	trans_conf_chan		:= make (chan config.OrderStruct)
-	trans_backup_chan	:= make (chan bool)
+	//trans_backup_chan	:= make (chan bool)
 
 	go bcast.Receiver(config.Order_port, rec_order_chan)
 	go bcast.Transmitter(config.Order_port/*, offline_alert_chan*/, trans_conf_chan)  //Channel to send orders
-	go bcast.Transmitter(config.Backup_port/*, offline_backup_chan*/, trans_backup_chan)  //Channel to send heartbeat to backup
+	//go bcast.Transmitter(config.Backup_port/*, offline_backup_chan*/, trans_backup_chan)  //Channel to send heartbeat to backup
 
 	for {
 		assign_timeout := time.NewTicker(100*time.Millisecond) //Need to change this logic
@@ -264,15 +274,14 @@ func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bo
 		select{
 		case new_order = <-rec_order_chan:
 			switch new_order.Cmd{
+			//Send cost value for given order
 			case config.CostSend:
-				if elev_dead { //donst send cost if dead
-					break
+				if !elev_dead { //don't send cost if dead
+					new_order.Cost = GenericCostFunction(new_order)//dummyCostFunc(new_order)//Current CF requires currentfloor and direction. How to fix
+					new_order.ElevID = config.LocalID
+					new_order.Cmd = config.OrdrAssign
+					trans_conf_chan <- new_order //transmit order cost					
 				}
-				new_order.Cost = GenericCostFunction(new_order)//dummyCostFunc(new_order)//Current CF requires currentfloor and direction. How to fix
-				new_order.ElevID = config.LocalID
-				new_order.Cmd = config.OrdrAssign
-				trans_conf_chan <- new_order //transmit order cost
-
 			case config.OrdrAssign:
 				if new_order.MasterID == config.LocalID && new_order.Cost < lowest_cost{  //If this elev is the one to assign order.
 					master = true
@@ -280,30 +289,41 @@ func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bo
 					best_elev = new_order.ElevID
 					fmt.Println("best_elev", best_elev)
 				}
+			//Confirm order receival
 			case config.OrdrAdd:
-				if new_order.ElevID == config.LocalID{
-					addToQueue(new_order, fsm.RetrieveElevState(), new_order.ElevID)
-					execute_chan <- new_order //add to stopArray
-					//add_order_chan <- new_order //add order to queue
-					new_order.Cmd = config.OrdrConf
-					trans_conf_chan <- new_order //transmit order confirmation
-				}
+				fmt.Println("Received add request")
+				addToQueue(new_order, false)
+				new_order.SenderID = config.LocalID
+				new_order.Cmd = config.OrdrConf
+				trans_conf_chan <- new_order //transmit order confirmation
+			//Add to queue and 
 			case config.OrdrConf:
-				if new_order.ElevID != config.LocalID{
-					//add_order_chan <- new_order
-					addToQueue(new_order, fsm.RetrieveElevState(), new_order.ElevID)
+				fmt.Println("Received order confirmation")
+				//Don't turn on lights until at least two elevators have order in queue
+				//to be sure of retransmission even though elev with order crashes
+				if new_order.SenderID != config.LocalID {
+					if !checkIfInQueue(new_order){
+						addToQueue(new_order, true)
+					} else if !(new_order.Button == config.BT_Cab && new_order.ElevID != config.LocalID){
+						elevio.SetButtonLamp(new_order.Button, new_order.Floor, true)	
+					}
+					if new_order.ElevID == config.LocalID{ //if order belongs to this elev
+						execute_chan <- new_order //add to stopArray
+					}
 				}
+			//Other elevator has finished its order
 			case config.OrdrDelete:
 				if new_order.ElevID != config.LocalID {
 					RemoveOrder(new_order.Floor, new_order.ElevID)
 				}
 			}
-		case elev_dead = <- is_dead_chan: //If 'dead' e.g motor unplugged
+		//If 'dead' e.g motor unplugged
+		case elev_dead = <- is_dead_chan: 
 			fmt.Println("Dead:", elev_dead)
 			if elev_dead{
 				retransmit_last_order_chan <- true
 			}
-
+		//Decide who gets order after certain time
 		case <- assign_timeout.C:
 			if master { //Replace with if lowest_cost<10?
 				new_order.ElevID = best_elev
@@ -314,7 +334,7 @@ func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bo
 				lowest_cost = config.MaxCost //maxcost
 				best_elev = -1
 			}
-			trans_backup_chan <- true
+			//trans_backup_chan <- true
 		}
 	}
 }
