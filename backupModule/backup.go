@@ -12,10 +12,10 @@ import(
 
 
 func RequestBackup(distr_order_chan chan<- config.OrderStruct, backup_req_chan <-chan int, transmit_backup_chan chan<- config.OrderStruct) {
-	var backup_queue config.OrderStruct
 	var backup_received bool = false
-	var buffer [1][queue.Queue_size]config.OrderStruct
+	var buffer [18]config.OrderStruct
 	var index_buffer int = 0
+	var in_queue bool = false
 
 	//backup_queue_chan := make(chan [config.Num_elevs][queue.Queue_size]config.OrderStruct)
 	backup_queue_chan := make(chan config.OrderStruct)
@@ -29,36 +29,52 @@ func RequestBackup(distr_order_chan chan<- config.OrderStruct, backup_req_chan <
 
 	for{
 		select{
-		case backup_queue = <- backup_queue_chan:
-			if !backup_received && backup_queue.Cmd != 0 {
-
-				if backup_queue.Floor != -1 {								//Add to buffer if valid order
-					fmt.Println("I received: ", backup_queue)
-					buffer[0][index_buffer] = backup_queue
-					index_buffer += 1
-				} else {
+		case backup_order := <- backup_queue_chan:
+			admit_loneliness.Stop()
+			if !backup_received {
+				for i:= 0 ; i < index_buffer; i++ {
+					if buffer[i].ElevID == backup_order.ElevID && buffer[i].Button == backup_order.Button && buffer[i].Floor == backup_order.Floor {
+						fmt.Println(buffer[i].Button, backup_order.Button, buffer[i].Floor , backup_order.Floor)
+						in_queue = true
+						break
+					}
+				}
+				if !in_queue {
+					buffer[index_buffer] = backup_order
+					fmt.Println("I received: ", buffer[index_buffer])
+				}
+				in_queue = false
+				index_buffer += 1
+				
+				if index_buffer >= 18 {
 						for i := 0; i < index_buffer; i++ { //if there are no more valid orders, send on distribute channel
-							distr_order_chan <- buffer[0][i]
+							distr_order_chan <- buffer[i]
 						}
-					index_buffer = 0
 					backup_received = true  // after all orders are distributed
+					fmt.Println("\nBACKUP RECEIVED\n")
+    				fmt.Printf("\n\n-------------INITIALIZED-------------\n")
+
 				}
 			}
 
 		case backup_id := <- backup_req_chan:
 			if backup_id != config.LocalID {
-				backup_queue := queue.RetrieveQueue()
+				backup_send_queue := queue.RetrieveQueue()
+				for i := 0; i < config.Num_elevs; i++ {
+					for j := 0; j < queue.Queue_size; j++ {
+						backup_send_queue[i][j].Cmd = config.OrdrAdd		//only send orders for the requested id
 
-				for i := 0; i < queue.Queue_size; i++ {
-						backup_queue[backup_id][i].Cmd = config.OrdrAdd		//only send orders for the requested id
-
-						transmit_backup_chan <- backup_queue[backup_id][i]
-						fmt.Println("Sending:", backup_queue[backup_id][i], "to", backup_id)
-						time.Sleep(100*time.Millisecond) // allahu akbar!
+						if backup_send_queue[i][j].Floor != -1 {								//Add to buffer if valid order
+							transmit_backup_chan <- backup_send_queue[i][j]
+							fmt.Println("Sending:", backup_send_queue[i][j], "to", backup_id)
+							//time.Sleep(20*time.Millisecond) // allahu akbar!
+						}
+					}
 				}
 			}
 		case <- admit_loneliness.C:
-			fmt.Println("No backup recived")
+			fmt.Println("\nNO BACKUP RECEIVED\n")
+    		fmt.Printf("\n\n-------------INITIALIZED-------------\n")
 			admit_loneliness.Stop()
 			/*
 			var safety_queue [config.Num_elevs][queue.Queue_size]config.OrderStruct
@@ -71,14 +87,14 @@ func RequestBackup(distr_order_chan chan<- config.OrderStruct, backup_req_chan <
 				distr_order_chan <- safety_queue[config.LocalID][i]
 				//time.Sleep(1*time*Millisecond)
 			}
-			*/
+			*/			
 			backup_received = true
 
 		default:
 			if !backup_received {
 				request_backup_chan <-config.LocalID
 			}
-			time.Sleep(500*time.Millisecond)
+			time.Sleep(50*time.Millisecond)
 
 		}
 
