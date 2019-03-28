@@ -195,7 +195,7 @@ func checkIfInQueue(order config.OrderStruct) bool{
 	return false
 }
 
-func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct, delete_order_chan <-chan config.OrderStruct, offline_chan <-chan bool){
+func DistributeOrder(is_dead_chan <-chan bool, distr_order_chan <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct, delete_order_chan <-chan config.OrderStruct, offline_chan <-chan bool){
 	var new_order config.OrderStruct
 	var offline bool = false
 	trans_order_chan	:= make (chan config.OrderStruct)
@@ -204,6 +204,8 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 	//Make order chan bigger, so not freeze as easily?
 	for{
 		select{
+		case <- is_dead_chan:
+			trans_order_chan <- new_order
 		case new_order = <- distr_order_chan:
 			fmt.Println("DistributeOrder")
 			if !checkIfInQueue(new_order){

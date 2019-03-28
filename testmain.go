@@ -6,9 +6,9 @@ import (
     "./queueModule"
     "./driverModule/elevio"
     "./fsmModule"
-    "./networkModule/bcast"
+    //"./networkModule/bcast"
     "./networkModule/peers"
-    "./backupModule"
+    //"./backupModule"
     "time"
     ."fmt"
     //"os/exec"
@@ -104,8 +104,8 @@ func main() {
     delete_order_chan := make(chan config.OrderStruct)
     is_dead_chan := make (chan bool)
     //backup_queue_chan := make(chan int)
-    transmit_backup_chan := make(chan [config.Num_elevs][10]config.OrderStruct)
-    backup_req_chan := make(chan int)
+    //transmit_backup_chan := make(chan [config.Num_elevs][10]config.OrderStruct)
+    //backup_req_chan := make(chan int)
 
     //elevrunner channels
     //raw_order_chan   := make (chan config.OrderStruct)
@@ -121,8 +121,8 @@ func main() {
     go backUp(id, checkbackup_chan)
 
 
-    elevio.Init(Sprintf("localhost:2000%d", config.LocalID)) //, num_floors)  //For simulators
-    //elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
+    //elevio.Init(Sprintf("localhost:2000%d", config.LocalID)) //, num_floors)  //For simulators
+    elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
 
 
     //ny_queue :=  queue.RetrieveQueue()
@@ -136,7 +136,7 @@ func main() {
         case <- checkbackup_chan:
           //debugging purposes
           //go queue.PrintQueue()
-  		    go queue.DistributeOrder(distr_order_chan, execute_chan, delete_order_chan, offline_chan)
+  		    go queue.DistributeOrder(is_dead_chan, distr_order_chan, execute_chan, delete_order_chan, offline_chan)
   		    go queue.ReceiveOrder(execute_chan, is_dead_chan)
   		    go elevclient.ExecuteOrder(execute_chan)
 
@@ -155,9 +155,9 @@ func main() {
           //go queue.Queue(/*raw_order_chan,*/ distr_order_chan, add_order_chan ,execute_chan)
           go fsm.ElevStateMachine(elev_cmd_chan)
 
-          go bcast.Receiver(config.Backup_port, backup_req_chan)
-          go bcast.Transmitter(config.Backup_port, transmit_backup_chan)
-          go backup.RequestBackup(distr_order_chan, backup_req_chan, transmit_backup_chan)
+          //go bcast.Receiver(config.Backup_port, backup_req_chan)
+          //go bcast.Transmitter(config.Backup_port, transmit_backup_chan)
+          //go backup.RequestBackup(distr_order_chan, backup_req_chan, transmit_backup_chan)
           //Println(queue.RetrieveQueue())
 		default:
 			time.Sleep(1*time.Second)
