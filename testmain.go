@@ -137,7 +137,7 @@ func main() {
         case <- checkbackup_chan:
           //debugging purposes
           //go queue.PrintQueue()
-  		    go queue.DistributeOrder(retransmit_last_order_chan, distr_order_chan, execute_chan, delete_order_chan, offline_chan)
+  		    go queue.DistributeOrder(distr_order_chan, execute_chan, delete_order_chan, offline_chan, retransmit_last_order_chan)
   		    go queue.ReceiveOrder(execute_chan, is_dead_chan, retransmit_last_order_chan)
   		    go elevclient.ExecuteOrder(execute_chan)
 

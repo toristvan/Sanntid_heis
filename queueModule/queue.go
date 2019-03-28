@@ -195,7 +195,7 @@ func checkIfInQueue(order config.OrderStruct) bool{
 	return false
 }
 
-func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct, delete_order_chan <-chan config.OrderStruct, offline_chan <-chan bool, retransmit_last_order_chan chan<- bool){
+func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct, delete_order_chan <-chan config.OrderStruct, offline_chan <-chan bool, retransmit_last_order_chan <-chan bool){
 	var new_order config.OrderStruct
 	var offline bool = false
 	trans_order_chan	:= make (chan config.OrderStruct)
