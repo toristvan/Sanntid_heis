@@ -3,6 +3,7 @@ package queue
 import (
 	"../driverModule/elevio"
 	"../networkModule/bcast"
+    "../networkModule/peers"
 	"../fsmModule"
 	"../configPackage"
 	"fmt"
@@ -117,7 +118,7 @@ func insertToQueue(order config.OrderStruct, index int){
 		orderQueue[order.ElevID][i] = orderQueue[order.ElevID][i-1]
 	}
 	order.Timestamp = time.Now()
-	printOrder(order)
+	//printOrder(order)
 	orderQueue[order.ElevID][index] = order
 }
 
@@ -145,7 +146,7 @@ func addToQueue(order config.OrderStruct, set_lights bool) {
 		}
 	}
 
-	fmt.Printf("Order added\n")
+	//fmt.Printf("Order added\n")
 	if set_lights && !(order.Button == config.BT_Cab && order.ElevID != config.LocalID){
 		elevio.SetButtonLamp(order.Button, order.Floor, true)
 	}
@@ -168,10 +169,13 @@ func RemoveOrder(floor int, id int){
 		orderQueue[id][i] = orderQueue[id][i+1]
 		orderQueue[id][i+1] = prev
 	}*/
-	for i := config.BT_HallUp; i <= config.BT_Cab  ; i++{ //
+	//Less than BT_Cab to avoid to turn off cab lights.
+	if id == config.LocalID {
+		elevio.SetButtonLamp(config.ButtonType(config.BT_Cab), floor, false)
+	} 
+	for i := config.BT_HallUp; i < config.BT_Cab  ; i++{ //
 		elevio.SetButtonLamp(config.ButtonType(i), floor, false) //BT syntax correct?
 	}
-
 	//fmt.Printf("Order removed from queue\n")
 	/*for i := 0; i < 10; i++ {
 		fmt.Println(orderQueue[1][i].Floor)
@@ -209,8 +213,8 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 	for{
 		select{
 		case new_order = <- distr_order_chan:
-			fmt.Println("DistributeOrder")
-			if !checkIfInQueue(new_order){
+			//fmt.Println("DistributeOrder")
+			if !checkIfInQueue(new_order){   //Should only check for own queue
 				switch new_order.Cmd{
 				case config.CostReq:
 					new_order.Cmd = config.CostSend
@@ -227,9 +231,11 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 				//Add watchdog hallcall to own queue, and transmit adding
 				case config.OrdrRetrans:
 					new_order.Cmd = config.OrdrAdd
-					new_order.ElevID = config.LocalID
+					if new_order.Button != config.BT_Cab {
+						new_order.ElevID = config.LocalID
+						execute_chan <- new_order
+					}
 					addToQueue(new_order, true)
-					execute_chan <- new_order
 					trans_order_chan <- new_order
 				}
 			//Retransmit watchdog cabcall to designated elevator
@@ -245,7 +251,7 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 			trans_order_chan <- new_order //what if new_order changes? What if cab call?
 		//case <- offline_chan:
 		case offline = <- offline_chan: //sets offline if transmit cant connect to router
-			fmt.Println("offline:", offline)
+			fmt.Println("Offline:", offline)
 		}
 	}
 }
@@ -287,21 +293,22 @@ func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bo
 					master = true
 					lowest_cost = new_order.Cost
 					best_elev = new_order.ElevID
-					fmt.Println("best_elev", best_elev)
+					//fmt.Println("Most optimal elevator: ", best_elev)
 				}
 			//Confirm order receival
 			case config.OrdrAdd:
-				fmt.Println("Received add request")
+				//fmt.Println("Received add request")
+				//Checkif in queue?
 				addToQueue(new_order, false)
 				new_order.SenderID = config.LocalID
 				new_order.Cmd = config.OrdrConf
 				trans_conf_chan <- new_order //transmit order confirmation
 			//Add to queue and 
 			case config.OrdrConf:
-				fmt.Println("Received order confirmation")
+				//fmt.Println("Received order confirmation")
 				//Don't turn on lights until at least two elevators have order in queue
 				//to be sure of retransmission even though elev with order crashes
-				if new_order.SenderID != config.LocalID {
+				if new_order.SenderID != config.LocalID || len(peers.ActivePeers.Peers) < 2 {
 					if !checkIfInQueue(new_order){
 						addToQueue(new_order, true)
 					} else if !(new_order.Button == config.BT_Cab && new_order.ElevID != config.LocalID){
