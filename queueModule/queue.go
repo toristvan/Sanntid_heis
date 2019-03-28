@@ -195,7 +195,7 @@ func checkIfInQueue(order config.OrderStruct) bool{
 	return false
 }
 
-func DistributeOrder(is_dead_chan <-chan bool, distr_order_chan <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct, delete_order_chan <-chan config.OrderStruct, offline_chan <-chan bool){
+func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan chan<- config.OrderStruct, delete_order_chan <-chan config.OrderStruct, offline_chan <-chan bool, retransmit_last_order_chan chan<- bool){
 	var new_order config.OrderStruct
 	var offline bool = false
 	trans_order_chan	:= make (chan config.OrderStruct)
@@ -204,7 +204,7 @@ func DistributeOrder(is_dead_chan <-chan bool, distr_order_chan <-chan config.Or
 	//Make order chan bigger, so not freeze as easily?
 	for{
 		select{
-		case <- is_dead_chan:
+		case <- retransmit_last_order_chan:
 			trans_order_chan <- new_order
 		case new_order = <- distr_order_chan:
 			fmt.Println("DistributeOrder")
@@ -242,7 +242,7 @@ func DistributeOrder(is_dead_chan <-chan bool, distr_order_chan <-chan config.Or
 
 
 
-func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bool){
+func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bool, retransmit_last_order_chan chan<- bool){
 
 	var lowest_cost int = config.MaxCost //max cost
 	var best_elev int 	=-1
@@ -300,6 +300,9 @@ func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bo
 			}
 		case elev_dead = <- is_dead_chan: //If 'dead' e.g motor unplugged
 			fmt.Println("Dead:", elev_dead)
+			if elev_dead{
+				retransmit_last_order_chan <- true
+			}
 
 		case <- assign_timeout.C:
 			if master { //Replace with if lowest_cost<10?

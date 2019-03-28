@@ -103,6 +103,7 @@ func main() {
     //add_order_chan := make(chan config.OrderStruct)
     delete_order_chan := make(chan config.OrderStruct)
     is_dead_chan := make (chan bool)
+    retransmit_last_order_chan := make (chan bool)
     //backup_queue_chan := make(chan int)
     //transmit_backup_chan := make(chan [config.Num_elevs][10]config.OrderStruct)
     //backup_req_chan := make(chan int)
@@ -136,8 +137,8 @@ func main() {
         case <- checkbackup_chan:
           //debugging purposes
           //go queue.PrintQueue()
-  		    go queue.DistributeOrder(is_dead_chan, distr_order_chan, execute_chan, delete_order_chan, offline_chan)
-  		    go queue.ReceiveOrder(execute_chan, is_dead_chan)
+  		    go queue.DistributeOrder(retransmit_last_order_chan, distr_order_chan, execute_chan, delete_order_chan, offline_chan)
+  		    go queue.ReceiveOrder(execute_chan, is_dead_chan, retransmit_last_order_chan)
   		    go elevclient.ExecuteOrder(execute_chan)
 
 

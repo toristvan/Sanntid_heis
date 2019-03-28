@@ -30,7 +30,7 @@
 
 ## Dead:
 
-*Ay OK?
+*Needs to tell others it's dead, so they'll take orders. Can retransmit immediately in dist, but then loses channel value in rec.
 
 ## Issues:
 
