@@ -39,9 +39,10 @@ const (
 
 type ButtonType int
 const (
-	BT_HallUp   ButtonType = 0
-	BT_HallDown            = 1
-	BT_Cab                 = 2
+	BT_Invalid	 ButtonType	= -1
+	BT_HallUp				= 0
+	BT_HallDown            	= 1
+	BT_Cab                 	= 2
 )
 
 type ButtonEvent struct {
@@ -54,20 +55,23 @@ type OrderStruct struct
 	Button ButtonType
 	Floor int
 	Timestamp time.Time
-	ElevID int
 	Cost int
 	Cmd OrderCommand
+	ElevID int
 	MasterID int
+	SenderID int
 }
 
 type OrderCommand int
 const (
+	OrdrInv			OrderCommand = -1
 	CostReq 		OrderCommand = 0
 	CostSend 		OrderCommand = 1
 	OrdrAssign 		OrderCommand = 2
 	OrdrAdd 		OrderCommand = 3
 	OrdrConf 		OrderCommand = 4
 	OrdrDelete		OrderCommand = 5
+	OrdrRetrans		OrderCommand = 6
 )
 
 type ElevCommand int

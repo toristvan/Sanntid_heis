@@ -9,14 +9,16 @@
 ## Queue:
 
 * Work actual orderQueue into watchdog?
-* Look at RemoveOrder() purpose of second for loop? Are we moving orders to beginning, is it necessary?
+* Look at RemoveOrder() purpose of second for loop? Are we moving orders to beginning (no), is it necessary?
 * Look at addToQueue(), is optimization logic necessary when we have stopArray()?
+*addToQueue(), remove input ID
 
 ## Cost function:
 
 * Works good enough
 * Add functionality to take cab calls and order dir into cosnsideration
 * Need access to stopArray, but also is to be called from queue... cyclic problem
+* Or can maybe use features of added queue.
 
 ## Backup:
 
