@@ -2,9 +2,12 @@ package main
 
 import (
     "fmt"
-    "./networkModule/bcast"
+    "./networkModule/peers"
+    //"./networkModule/localip"
     "./configPackage"
     "time"
+    //"flag"
+    //"os"
 	/*
     "./networkModule/localip"
     "./queueModule"
@@ -24,6 +27,7 @@ func main(){
 	fmt.Printf("%s\n", local)
 	*/
 	//config.InitQueue()
+	/*
 	var test_order config.OrderStruct
 	test_order.Button = config.BT_HallUp
 	test_order.Floor = 2
@@ -47,7 +51,46 @@ func main(){
 			printOrder(rec)
 			}
 
+	}*/
+	//var id string
+	//flag.StringVar(&id, "id", "", "id of this peer")
+	//flag.Parse()
+
+	// ... or alternatively, we can use the local IP address.
+	// (But since we can run multiple programs on the same PC, we also append the
+	//  process ID)
+	/*if id == "" {
+		localIP, err := localip.LocalIP()
+		if err != nil {
+			fmt.Println(err)
+			localIP = "DISCONNECTED"
+		}
+		id = fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
+	}*/
+	var id int
+	fmt.Println("Set id")
+    fmt.Scanf("%d", &id)
+
+	peers_update_chan := make (chan peers.PeerUpdate)
+	peer_tx_enable := make (chan bool)
+
+	go peers.Transmitter(20024, id, peer_tx_enable)
+	go peers.Receiver(20024, peers_update_chan)
+
+	fmt.Println("Started")
+	for {
+		select {
+		case p := <-peers_update_chan:
+			fmt.Printf("Peer update:\n")
+			fmt.Printf("  Peers num:    %d\n", len(p.Peers))
+			fmt.Printf("  Peers:    %d\n", p.Peers)
+			fmt.Printf("  New:      %d\n", p.New)
+			fmt.Printf("  Lost:     %d\n", p.Lost)
+
+		}
 	}
+
+
 
 	
 }
