@@ -6,22 +6,17 @@ import (
     "./queueModule"
     "./driverModule/elevio"
     "./fsmModule"
-    //"./networkModule/bcast"
+    "./networkModule/bcast"
     "./networkModule/peers"
-    //"./backupModule"
+    "./backupModule"
     "time"
     ."fmt"
     //"os/exec"
     //"strconv"
 )
-/*
-type networkOrderStruct struct{
-    Order config.OrderStruct
-    req_update bool
-    send_update bool
-}*/
+//var init_check_backup bool
 
-func initElevNode() int {
+func initElevNode() {
     var id int
 
     Println("Set id")
@@ -35,36 +30,64 @@ func initElevNode() int {
     config.InitConfigData(id)
     queue.InitQueue()
     Println("Id set to",id,"number of elevators", config.Num_elevs)
-    return id
 }
 
 //Works fine-ish. Needs to send ID and store orders in a queue.
 //Needs to figure out properly when program is frozen. (When backup should take over)
 //Sometimes spawns unexpectedly...
+
 func backUp(id int, checkbackup_chan chan<- bool){
-    /*
+/*
+
     //backUpCmd := exec.Command("cmd.exe","/C","start", `c:\Users\torge\Documents\Go-code\project-gruppe-61-real\testmain.go"`)
     //var backup_id int
-    
+
     //For Linux:
-    backUpCmd := exec.Command("gnome-terminal", "-x", "go", "run", "/home/student/Desktop/GR61REAL/project-gruppe-61-real/testmain.go")
+    //backUpCmd := exec.Command("gnome-terminal", "-x", "go", "run", "/home/student/Desktop/GR61REAL/project-gruppe-61-real/testmain.go")
     //For Windows:
    // backUpCmd := exec.Command("cmd.exe","/C","start") //For Windows. Åpner et nytt cmd vindu men, har ikke klart å få til å kjøre et nytt go script
 
-    var backup_id int
-    primary_id := strconv.Itoa(id) //from int to string
-    primary := false
+    //var backup_id int
+    //primary_id := strconv.Itoa(id) //from int to string
+    // primary := false
+    //backup_Transmitt_chan := make(chan config.OrderStruct)
+    //backup_receive_chan := make(chan config.OrderStruct)
 
-    backup_receive_chan := make(chan peers.PeerUpdate)
-    offline_chan := make(chan bool)
+    //receive_id_chan := make(chan peers.PeerUpdate)
+    //offline_chan := make(chan bool)
 
-    go peers.Transmitter(config.Backup_port, primary_id, offline_chan)
-    go peers.CheckOffline(config.Backup_port, offline_chan)
+    //go peers.Receiver(config.Backup_port, receive_id_chan)
+    //go peers.Transmitter(config.Backup_port, primary_id, offline_chan)
+    //go peers.CheckOffline(config.Backup_port, offline_chan)
+    //go bcast.Transmitter(config.Backup_port, backup_Transmitt_chan)
     //go bcast.Receiver(config.Backup_port, backup_receive_chan)
-    go peers.Receiver(config.Backup_port, backup_receive_chan)
+
+    if init_check_backup {
+        for{
+          backupInitTicker := time.NewTicker(2000*time.Millisecond)
+          defer backupInitTicker.Stop()
+
+          select{
+          case <- backupInitTicker.C:
+            Println("timeout maddafakka")
+            init_check_backup = false
+            break
+
+          case tmp := <- backup_receive_chan:
+            if tmp.ElevID == 0 {
+              Println(tmp)
+            }
+
+          }
+          if !init_check_backup {
+            checkbackup_chan <- true
+            break
+          }
+        }
+    }
 
     for{
-    	timeoutTicker := time.NewTicker(2000*time.Millisecond)
+    	 timeoutTicker := time.NewTicker(2000*time.Millisecond)
         defer timeoutTicker.Stop()
 
         select{
@@ -93,10 +116,7 @@ func backUp(id int, checkbackup_chan chan<- bool){
     }
     */
     checkbackup_chan <- true
-
 }
-
-
 
 func main() {
     //Queue channels
@@ -106,7 +126,8 @@ func main() {
     retransmit_last_order_chan := make (chan bool)
     //backup_queue_chan := make(chan int)
     //transmit_backup_chan := make(chan [config.Num_elevs][10]config.OrderStruct)
-    //backup_req_chan := make(chan int)
+    transmit_backup_chan := make(chan config.OrderStruct)
+    backup_req_chan := make(chan int)
 
     //elevrunner channels
     //raw_order_chan   := make (chan config.OrderStruct)
@@ -114,16 +135,13 @@ func main() {
     execute_chan  := make (chan config.OrderStruct)
     elev_cmd_chan := make (chan config.ElevCommand)
 
-    checkbackup_chan := make(chan bool)
+    //checkbackup_chan := make(chan bool)
     offline_chan := make (chan bool)
 
-    id := initElevNode()
-
-    go backUp(id, checkbackup_chan)
-
-
-    //elevio.Init(Sprintf("localhost:2000%d", config.LocalID)) //, num_floors)  //For simulators
-    elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
+    initElevNode()
+    //go backUp(id, checkbackup_chan)
+    elevio.Init(Sprintf("localhost:1000%d", config.LocalID)) //, num_floors)  //For simulators
+    //elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
 
 
     //ny_queue :=  queue.RetrieveQueue()
@@ -132,6 +150,25 @@ func main() {
     //Mainloop only runs after backup-check fails (No connection with primary function)
     //Can run without backup if backUp is commented out and only sends bool through checkbackup_chan
     Printf("\n\n-------------INITIALIZED-------------\n")
+
+    go queue.DistributeOrder(distr_order_chan, execute_chan, delete_order_chan, offline_chan, retransmit_last_order_chan)
+    go queue.ReceiveOrder(execute_chan, is_dead_chan, retransmit_last_order_chan)
+    go elevclient.ExecuteOrder(execute_chan)
+    go elevclient.IsElevDead(is_dead_chan)
+    go peers.CheckOffline(20003, offline_chan)
+    go elevclient.ElevRunner(elev_cmd_chan, delete_order_chan )
+    //Tidligere Init i elevatorClient/ElevRunner
+    go elevclient.IOwrapper(distr_order_chan)
+    go fsm.ElevStateMachine(elev_cmd_chan)
+    go bcast.Receiver(config.Backup_port, backup_req_chan)
+    go bcast.Transmitter(config.Backup_port, transmit_backup_chan)
+    go backup.RequestBackup(distr_order_chan, backup_req_chan, transmit_backup_chan)
+
+    for{
+      Println("Tekmikal")
+      time.Sleep(10*time.Second)
+    }
+    /*
     for {
         select{
         case <- checkbackup_chan:
@@ -152,15 +189,17 @@ func main() {
 
           //Tidligere Init i elevatorClient/ElevRunner
           go elevclient.IOwrapper(distr_order_chan)
-          //go queue.Queue(/*raw_order_chan,*/ distr_order_chan, add_order_chan ,execute_chan)
+          //go queue.Queue(raw_order_chan, distr_order_chan, add_order_chan ,execute_chan)
           go fsm.ElevStateMachine(elev_cmd_chan)
 
-          //go bcast.Receiver(config.Backup_port, backup_req_chan)
-          //go bcast.Transmitter(config.Backup_port, transmit_backup_chan)
-          //go backup.RequestBackup(distr_order_chan, backup_req_chan, transmit_backup_chan)
+          go bcast.Receiver(config.Backup_port, backup_req_chan)
+          go bcast.Transmitter(config.Backup_port, transmit_backup_chan)
+
+          go backup.RequestBackup(distr_order_chan, backup_req_chan, transmit_backup_chan)
           //Println(queue.RetrieveQueue())
 		default:
 			time.Sleep(1*time.Second)
 		}
     }
+    */
 }
