@@ -4,42 +4,40 @@ import (
 	"../conn"
 	"fmt"
 	"net"
-	"sort"
+	//"sort"
 	"time"
+	"strconv"
 )
 
 type PeerUpdate struct {
-	Peers []string
-	New   string
-	Lost  []string
+	Peers []int
+	New   int
+	Lost  []int
 }
 
-const interval = 1000 * time.Millisecond
-const timeout = 50 * time.Millisecond
+var ActivePeers PeerUpdate
+const interval = 200* time.Millisecond
+const timeout = 1000 * time.Millisecond
 
 
 //What does this currently do?
 
-func Transmitter(port int, id string, offline_check chan bool) {
+func Transmitter(port int, id int, transmit_enable_chan chan bool) {
 
 	conn := conn.DialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 
-	//enable := true
+	enable := true
 	for {
-			//enable = <-offline_check
-			transmitTicker := time.NewTicker(interval)
-			select {
-			//case <-time.After(interval):
-			case <- transmitTicker.C:
-				//if enable {
-					_, err := conn.WriteTo([]byte(id), addr)
-					if err != nil {
-							fmt.Println(err)
-					}
-				//}
-			}
+		select {
+
+		case enable = <- transmit_enable_chan:
+		case <- time.After(interval):
 		}
+		if enable {
+			conn.WriteTo([]byte(strconv.Itoa(id)), addr)
+		}
+	}
 }
 
 
@@ -70,7 +68,7 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 
 	var buf [1024]byte
 	var p PeerUpdate
-	lastSeen := make(map[string]time.Time)
+	lastSeen := make(map[int]time.Time)
 
 	conn := conn.DialBroadcastUDP(port)
 
@@ -80,11 +78,11 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 		conn.SetReadDeadline(time.Now().Add(interval))
 		n, _, _ := conn.ReadFrom(buf[0:])
 
-		id := string(buf[:n])
+		id, _ := strconv.Atoi(string(buf[:n]))
 
 		// Adding new connection
-		p.New = ""
-		if id != "" {
+		p.New = -1
+		if id >-1 {
 			if _, idExists := lastSeen[id]; !idExists {
 				p.New = id
 				updated = true
@@ -94,7 +92,7 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 		}
 
 		// Removing dead connection
-		p.Lost = make([]string, 0)
+		p.Lost = make([]int, 0)
 		for k, v := range lastSeen {
 			if time.Now().Sub(v) > timeout {
 				updated = true
@@ -105,15 +103,28 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 
 		// Sending update
 		if updated {
-			p.Peers = make([]string, 0, len(lastSeen))
+			p.Peers = make([]int, 0, len(lastSeen))
 
 			for k, _ := range lastSeen {
 				p.Peers = append(p.Peers, k)
 			}
 
-			sort.Strings(p.Peers)
-			sort.Strings(p.Lost)
+			//sort.Strings(p.Peers)
+			//sort.Strings(p.Lost)
 			peerUpdateCh <- p
 		}
 	}
+}
+
+
+func CheckForPeers(peers_update_chan <-chan PeerUpdate){
+	for{
+		ActivePeers = <-peers_update_chan
+		fmt.Printf("Peer update:\n")
+		fmt.Printf("  Peers num:    %d\n", len(ActivePeers.Peers))
+		fmt.Printf("  Peers:    %d\n", ActivePeers.Peers)
+		fmt.Printf("  New:      %d\n", ActivePeers.New)
+		fmt.Printf("  Lost:     %d\n", ActivePeers.Lost)
+	}	
+
 }

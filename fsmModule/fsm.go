@@ -3,7 +3,7 @@ package fsm
 import(
   "../configPackage"
   "../driverModule/elevio"
-  "fmt"
+  //"fmt"
   "time"
 )
 
@@ -21,25 +21,24 @@ func ElevStateMachine(new_command_chan <-chan config.ElevCommand){
     select{
     case new_cmd := <-new_command_chan:
       switch new_cmd{
-
       case config.GoUp:
         elevio.SetMotorDirection(config.MD_Up)
         elev_state = config.GoingUp           
-        fmt.Println("Going up")
+        //fmt.Println("Going up")
       case config.GoDown:
         elevio.SetMotorDirection(config.MD_Down)
         elev_state = config.GoingDown         
-        fmt.Println("Going down")
+        //fmt.Println("Going down")
       case config.FloorReached:
-        elevio.SetMotorDirection(config.MD_Stop)
         elev_state = config.AtFloor           
-        fmt.Println("At floor")
+        elevio.SetMotorDirection(config.MD_Stop)
+        //fmt.Println("At floor")
         elevio.SetDoorOpenLamp(true)
-        time.Sleep(1000*time.Millisecond)
+        time.Sleep(2000*time.Millisecond)
         elevio.SetDoorOpenLamp(false)
       case config.Finished:
         elev_state = config.Idle 
-        fmt.Println("Idle")
+        //fmt.Println("Idle")
       }
     }
   }
