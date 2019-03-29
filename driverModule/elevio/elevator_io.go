@@ -52,7 +52,7 @@ func SetMotorDirection(dir config.MotorDirection) {
 }
 
 func SetButtonLamp(button config.ButtonType, floor int, value bool) {
-	if floor > -1 || floor <= 3 && button > -1 || button <= 2{
+	if (floor > -1 && floor <= 3) && (button > -1 && button <= 2){
 		_mtx.Lock()
 		defer _mtx.Unlock()
 		_conn.Write([]byte{2, byte(button), byte(floor), toByte(value)})
@@ -60,7 +60,7 @@ func SetButtonLamp(button config.ButtonType, floor int, value bool) {
 }
 
 func SetFloorIndicator(floor int) {
-	if floor > -1 || floor <= 3 {
+	if (floor > -1 && floor <= 3) {
 		_mtx.Lock()
 		defer _mtx.Unlock()
 		_conn.Write([]byte{3, byte(floor), 0, 0})
