@@ -5,9 +5,12 @@
 * Move constants and types to config.
 * Try and workaround global variables.  Make Current_floor non-global
 
-* Replace variables:
-
 * Remove LICENSE in elevio
+
+* Look at Mutexes - especially when deleting order in watchdog
+
+* Review retransmit last order //what if new_order changes? What if cab call?
+* Remake backup, so that is triggered by queue
 
 * Update README.md
 

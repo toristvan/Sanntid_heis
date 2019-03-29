@@ -35,7 +35,6 @@ func main() {
     peers_update_chan           := make (chan peers.PeerUpdate)
     peer_tx_enable_chan         := make (chan bool)
 
-
     //Queue channels
     rec_order_chan              := make (chan config.OrderStruct)
     trans_conf_chan             := make (chan config.OrderStruct)
@@ -44,7 +43,6 @@ func main() {
     delete_order_chan           := make(chan config.OrderStruct)
     retransmit_last_order_chan  := make (chan bool)
     execute_chan                := make (chan config.OrderStruct)
-    //backup_queue_chan := make(chan int)
     
     //Elevstatus channels
     is_dead_chan                := make (chan bool)
@@ -54,22 +52,18 @@ func main() {
     elev_cmd_chan               := make (chan config.ElevCommand)
     wakeup_chan                 := make (chan bool)
 
-    //transmit_backup_chan := make(chan [config.Num_elevs][10]config.OrderStruct)
+    //backup channels
     transmit_backup_chan        := make(chan config.OrderStruct)
-    backup_req_chan             := make(chan int)
+    received_backup_request_chan:= make(chan int)
 
-    //checkbackup_chan := make(chan bool)
+    //io channels
     drv_floors_dead_chan        := make (chan int)
     drv_floors_run_chan         := make (chan int)
-    drv_buttons_chan            := make(chan config.ButtonEvent)//moved
-
-    //deadlock channel
-    deadlock_chan               := make (chan bool)
+    drv_buttons_chan            := make(chan config.ButtonEvent)
 
     initElevNode()
     Printf("\n\n-------------INITIALIZING-------------\n")
 
-    //go backUp(id, checkbackup_chan)
     //elevio.Init(Sprintf("localhost:2000%d", config.Local_ID)) //, num_floors)  //For simulators
     elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
 
@@ -83,13 +77,12 @@ func main() {
     //IO goroutines
     go elevio.PollFloorSensor(drv_floors_run_chan)
     go elevio.PollFloorSensor(drv_floors_dead_chan)
-    go elevio.PollButtons(drv_buttons_chan)//moved
+    go elevio.PollButtons(drv_buttons_chan)
     go elevopr.IOwrapper(distr_order_chan, drv_buttons_chan)
 
     //Queue goroutines
     go bcast.Receiver(config.Order_port, rec_order_chan)
     go bcast.Transmitter(config.Order_port, trans_conf_chan)  
-
     go bcast.Transmitter(config.Order_port, trans_order_chan)
     go queue.DistributeOrder(distr_order_chan, execute_chan, delete_order_chan, offline_chan, retransmit_last_order_chan, trans_order_chan)
     go queue.ReceiveOrder(execute_chan, is_dead_chan, retransmit_last_order_chan, rec_order_chan, trans_conf_chan)
@@ -97,21 +90,20 @@ func main() {
     go elevopr.ExecuteOrder(execute_chan)
 
     //Elevstatus goroutines
-    go elevopr.IsElevDead(is_dead_chan, drv_floors_dead_chan)
     go peers.CheckOffline(config.Offline_port, offline_chan)
-    go elevopr.ElevRunner(elev_cmd_chan, delete_order_chan, wakeup_chan, drv_floors_run_chan)
-
+    go elevopr.IsElevDead(is_dead_chan, drv_floors_dead_chan)
 
     //Running goroutines
+    go elevopr.ElevOperator(elev_cmd_chan, delete_order_chan, wakeup_chan, drv_floors_run_chan)
     go elevopr.ElevWakeUp(wakeup_chan)
     go elevsm.ElevStateMachine(elev_cmd_chan)
 
     //Backup goroutines
-    go bcast.Receiver(config.Backup_port, backup_req_chan)
+    go bcast.Receiver(config.Backup_port, received_backup_request_chan)
     go bcast.Transmitter(config.Backup_port, transmit_backup_chan)
-    go backup.RequestBackup(distr_order_chan, backup_req_chan, transmit_backup_chan)
+    go backup.RequestBackup(distr_order_chan, received_backup_request_chan, transmit_backup_chan)
 
     select{
-      case <- deadlock_chan:
+
     }
 }

@@ -9,6 +9,7 @@ const Ground_floor int = 0
 const Num_floors int = 4
 const Max_cost int = Num_floors
 const Num_elevs int = 3
+const Queue_size int = (Num_floors*3)-2
 
 const Order_port int = 20005
 const Backup_port int = 20070
@@ -63,6 +64,7 @@ type OrderStruct struct
 	SenderID int
 }
 
+//Decides how to handle received order
 type OrderCommand int
 const (
 	OrdrInv			OrderCommand = -1

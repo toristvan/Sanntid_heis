@@ -9,88 +9,73 @@ import(
 
 )
 
-
-func RequestBackup(distr_order_chan chan<- config.OrderStruct, backup_req_chan <-chan int, transmit_backup_chan chan<- config.OrderStruct) {
+//Consists of both receiving and transmitting end. Channel to ask for backup is closed once backup is received.
+//The channel will trigger transmitting end to transmit backup to ID requesting it.
+func RequestBackup(distr_order_chan chan<- config.OrderStruct, received_backup_request_chan <-chan int, transmit_backup_chan chan<- config.OrderStruct) {
 	var backup_received bool = false
 	var buffer [18]config.OrderStruct
 	var index_buffer int = 0
-	var in_queue bool = false
+	var in_buffer bool = false
 
-	//backup_queue_chan := make(chan [config.Num_elevs][queue.Queue_size]config.OrderStruct)
-	backup_queue_chan := make(chan config.OrderStruct)
+	receive_backup_chan := make(chan config.OrderStruct)
 	request_backup_chan := make(chan int)
 
 	//Transmit backup request and receive backup-queue
-	go bcast.Receiver(config.Backup_port, backup_queue_chan)
+	go bcast.Receiver(config.Backup_port, receive_backup_chan)
 	go bcast.Transmitter(config.Backup_port, request_backup_chan)
 	request_backup_chan <- config.Local_ID
 	admit_loneliness := time.NewTicker(5*time.Second)
 
 	for{
 		select{
-		case backup_order := <- backup_queue_chan:
-			defer close(backup_queue_chan)
+		//Transmitting end
+		case backup_id := <- received_backup_request_chan:
+			if backup_id != config.Local_ID {
+				backup_send_queue := queue.RetrieveQueue()
+				for i := 0; i < config.Num_elevs; i++ {
+					for j := 0; j < config.Queue_size; j++ {
+						backup_send_queue[i][j].Cmd = config.OrdrAdd
+						//Add to buffer if valid order
+						if backup_send_queue[i][j].Floor != -1 {
+							transmit_backup_chan <- backup_send_queue[i][j]
+						}
+					}
+				}
+			}
+		//Receiving end
+		case backup_order := <- receive_backup_chan:
+			defer close(receive_backup_chan)
 			defer close(request_backup_chan)
 			admit_loneliness.Stop()
 			if !backup_received {
 				for i:= 0 ; i < index_buffer; i++ {
 					if buffer[i].ElevID == backup_order.ElevID && buffer[i].Button == backup_order.Button && buffer[i].Floor == backup_order.Floor {
-						//fmt.Println(buffer[i].Button, backup_order.Button, buffer[i].Floor , backup_order.Floor)
-						in_queue = true
+						in_buffer = true
 						break
 					}
 				}
-				if !in_queue {
+				if !in_buffer {
 					buffer[index_buffer] = backup_order
-					fmt.Println("I received: ", buffer[index_buffer])
 				}
-				in_queue = false
+				in_buffer = false
 				index_buffer += 1
-				
-				if index_buffer >= 18 {
-						for i := 0; i < index_buffer; i++ { //if there are no more valid orders, send on distribute channel
+				//If buffer full	(Size = Maximum amount of unique orders)
+				if index_buffer >= (config.Num_elevs + 2)*config.Num_floors -2 {
+						for i := 0; i < index_buffer; i++ { 
 							distr_order_chan <- buffer[i]
 						}
-					backup_received = true  // after all orders are distributed
+					//All backup orders received
+					backup_received = true  
 					fmt.Println("\nBACKUP RECEIVED\n")
     				fmt.Printf("\n\n-------------INITIALIZED-------------\n")
-
 				}
 			}
-
-		case backup_id := <- backup_req_chan:
-			if backup_id != config.Local_ID {
-				backup_send_queue := queue.RetrieveQueue()
-				for i := 0; i < config.Num_elevs; i++ {
-					for j := 0; j < queue.Queue_size; j++ {
-						backup_send_queue[i][j].Cmd = config.OrdrAdd		//only send orders for the requested id
-
-						if backup_send_queue[i][j].Floor != -1 {								//Add to buffer if valid order
-							transmit_backup_chan <- backup_send_queue[i][j]
-							fmt.Println("Sending:", backup_send_queue[i][j], "to", backup_id)
-							//time.Sleep(20*time.Millisecond) // allahu akbar!
-						}
-					}
-				}
-			}
+		//If too long without receiving timeout
 		case <- admit_loneliness.C:
 			fmt.Println("\nNO BACKUP RECEIVED\n")
     		fmt.Printf("\n\n-------------INITIALIZED-------------\n")
 			admit_loneliness.Stop()
-			/*
-			var safety_queue [config.Num_elevs][queue.Queue_size]config.OrderStruct
-			for i := 0 ; i < config.Num_floors ; i++{
-				safety_queue[config.Local_ID][i].Button = config.BT_Cab
-				safety_queue[config.Local_ID][i].Floor = i
-				safety_queue[config.Local_ID][i].ElevID = config.Local_ID
-				safety_queue[config.Local_ID][i].Cmd = config.OrdrAdd
-				safety_queue[config.Local_ID][i].Timestamp = time.Now()
-				distr_order_chan <- safety_queue[config.Local_ID][i]
-				//time.Sleep(1*time*Millisecond)
-			}
-			*/			
 			backup_received = true
-
 		case <- time.After(50*time.Millisecond):
 			if !backup_received {
 				request_backup_chan <-config.Local_ID

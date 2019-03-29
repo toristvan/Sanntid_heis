@@ -9,15 +9,17 @@ import(
 var elev_state config.ElevStateType
 var new_command config.ElevCommand
 
+//For other modules to read elev_state
 func RetrieveElevState() config.ElevStateType{
     return elev_state
 }
 
-func ElevStateMachine(new_command_chan <-chan config.ElevCommand){
+//Changes elev_state based on command on channel
+func ElevStateMachine(elev_cmd_chan <-chan config.ElevCommand){
     elev_state = config.Idle
     for{
         select{
-        case new_cmd := <-new_command_chan:
+        case new_cmd := <-elev_cmd_chan:
             switch new_cmd{
             case config.GoUp:
                 elevio.SetMotorDirection(config.MD_Up)
