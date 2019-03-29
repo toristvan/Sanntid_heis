@@ -39,7 +39,6 @@ const (
 
 type ButtonType int
 const (
-	BT_Invalid	 ButtonType	= -1
 	BT_HallUp				= 0
 	BT_HallDown            	= 1
 	BT_Cab                 	= 2

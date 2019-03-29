@@ -36,7 +36,7 @@ func RequestBackup(distr_order_chan chan<- config.OrderStruct, backup_req_chan <
 			if !backup_received {
 				for i:= 0 ; i < index_buffer; i++ {
 					if buffer[i].ElevID == backup_order.ElevID && buffer[i].Button == backup_order.Button && buffer[i].Floor == backup_order.Floor {
-						fmt.Println(buffer[i].Button, backup_order.Button, buffer[i].Floor , backup_order.Floor)
+						//fmt.Println(buffer[i].Button, backup_order.Button, buffer[i].Floor , backup_order.Floor)
 						in_queue = true
 						break
 					}

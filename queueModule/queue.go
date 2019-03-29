@@ -26,7 +26,7 @@ func InitQueue(){
 }
 
 func invalidateOrder(order config.OrderStruct) config.OrderStruct {
-	order.Button = config.BT_Invalid
+	order.Button = config.BT_HallUp
 	order.Floor = -1
 	order.Cost = config.MaxCost
 	order.Cmd = config.OrdrInv
@@ -136,7 +136,6 @@ func addToQueue(order config.OrderStruct, set_lights bool) {
 			}
 		}
 	}
-
 	//fmt.Printf("Order added\n")
 	if set_lights && !(order.Button == config.BT_Cab && order.ElevID != config.LocalID){
 		elevio.SetButtonLamp(order.Button, order.Floor, true)
@@ -215,7 +214,6 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 				case config.OrdrRetrans:
 					new_order.Cmd = config.OrdrAdd
 					if new_order.Button != config.BT_Cab {
-						fmt.Println("Retransmit Hall with id", new_order.ElevID)
 						new_order.ElevID = config.LocalID
 						execute_chan <- new_order
 					} //If cab call, will belong to other elevator. Retransmit and add to queue.

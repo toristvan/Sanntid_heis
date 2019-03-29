@@ -5,7 +5,7 @@ import (
     "../queueModule"
     "../fsmModule"
     "../configPackage"
-    "fmt"
+    //"fmt"
     "time"
 )
 
@@ -38,9 +38,7 @@ func ElevWakeUp(wakeup_chan chan<- bool){
   for {
     <-time.After(1*time.Second)
     if !isEmpty(stopArray, elevio.Ground_floor, elevio.Num_floors) && (fsm.RetrieveElevState() == config.Idle) {
-      fmt.Println("Queue Alert 1")
       wakeup_chan <- true
-      fmt.Println("Queue Alert 2")
     }
   }
 }
@@ -77,9 +75,7 @@ func IOwrapper(distr_order_chan chan<- config.OrderStruct, drv_buttons_chan <-ch
       } else{
         new_order.Cmd = config.OrdrAdd
       }
-      fmt.Println("IO Wrapper 1")
       distr_order_chan <- new_order
-      fmt.Println("IO Wrapper 2")
 
   }
 }
