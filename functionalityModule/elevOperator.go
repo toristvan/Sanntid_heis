@@ -1,9 +1,9 @@
-package elevclient
+package elevopr
 
 import (
     "../driverModule/elevio"
     "../queueModule"
-    "../fsmModule"
+    "../elevsmModule"
     "../configPackage"
     "time"
 )
@@ -36,7 +36,7 @@ func isEmpty(arr [config.Num_floors]floorStatus, from int, to int) bool{
 func ElevWakeUp(wakeup_chan chan<- bool){
   for {
     <-time.After(1*time.Second)
-    if !isEmpty(stopArray, config.Ground_floor, config.Num_floors) && (fsm.RetrieveElevState() == config.Idle) {
+    if !isEmpty(stopArray, config.Ground_floor, config.Num_floors) && (elevsm.RetrieveElevState() == config.Idle) {
       wakeup_chan <- true
     }
   }
@@ -99,7 +99,7 @@ func ElevRunner(elev_cmd_chan chan<- config.ElevCommand, delete_order_chan chan<
   for{
     select{
     case config.Current_floor = <- drv_floors_chan:
-      current_state = fsm.RetrieveElevState()
+      current_state = elevsm.RetrieveElevState()
       elevio.SetFloorIndicator(config.Current_floor)
 
       switch current_state{
@@ -110,7 +110,7 @@ func ElevRunner(elev_cmd_chan chan<- config.ElevCommand, delete_order_chan chan<
             delete_order_chan <- setFloorFalse()
         	}
         	//Stop again if new order received when at floor with open door
-        	if (stopArray[config.Current_floor].stop_up || stopArray[config.Current_floor].stop_down) && fsm.RetrieveElevState() == config.AtFloor {
+        	if (stopArray[config.Current_floor].stop_up || stopArray[config.Current_floor].stop_down) && elevsm.RetrieveElevState() == config.AtFloor {
         	 	elev_cmd_chan <- config.FloorReached
 	        	delete_order_chan <- setFloorFalse()
         	}
@@ -130,7 +130,7 @@ func ElevRunner(elev_cmd_chan chan<- config.ElevCommand, delete_order_chan chan<
         		delete_order_chan <- setFloorFalse()
         	}
         	//Stop again if new order received when at floor with open door
-        	if (stopArray[config.Current_floor].stop_up || stopArray[config.Current_floor].stop_down) && fsm.RetrieveElevState() == config.AtFloor {
+        	if (stopArray[config.Current_floor].stop_up || stopArray[config.Current_floor].stop_down) && elevsm.RetrieveElevState() == config.AtFloor {
         		elev_cmd_chan <- config.FloorReached
 	        	delete_order_chan <- setFloorFalse()
 

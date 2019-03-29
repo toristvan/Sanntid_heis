@@ -1,8 +1,8 @@
-package elevclient
+package elevopr
 
 import (
     //"../driverModule/elevio"
-    "../fsmModule"
+    "../elevsmModule"
     "../configPackage"
     //"fmt"
     "time"
@@ -12,7 +12,7 @@ import (
 func IsElevDead(is_dead_chan chan<- bool, drv_floors_chan <-chan int){
 	var dead bool = false
 	for{
-		for fsm.RetrieveElevState() == config.GoingUp || fsm.RetrieveElevState() == config.GoingDown {
+		for elevsm.RetrieveElevState() == config.GoingUp || elevsm.RetrieveElevState() == config.GoingDown {
 			//deadTimer := time.NewTicker(5*time.Second)
 			//defer deadTimer.Stop()
 			//fmt.Println("Waiting for floor....")
@@ -24,7 +24,7 @@ func IsElevDead(is_dead_chan chan<- bool, drv_floors_chan <-chan int){
 				}
 
 			case <- time.After(5*time.Second):
-				if !dead && (fsm.RetrieveElevState() == config.GoingUp || fsm.RetrieveElevState() == config.GoingDown){
+				if !dead && (elevsm.RetrieveElevState() == config.GoingUp || elevsm.RetrieveElevState() == config.GoingDown){
 					dead = true
 					is_dead_chan <- dead
 				}

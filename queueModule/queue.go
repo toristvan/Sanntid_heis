@@ -4,7 +4,7 @@ import (
 	"../driverModule/elevio"
 	//"../networkModule/bcast"
     "../networkModule/peers"
-	"../fsmModule"
+	"../elevsmModule"
 	"../configPackage"
 	"fmt"
 	"time"
@@ -64,7 +64,7 @@ func GenericCostFunction(order config.OrderStruct) int {
   }
   //in outcommented values; higher cost i better
   //Put in max cost to make sure always pos?
-  switch fsm.RetrieveElevState(){
+  switch elevsm.RetrieveElevState(){
   case config.Idle:
   	switch distance == 0{
   	case true:
@@ -117,7 +117,7 @@ func insertToQueue(order config.OrderStruct, index int){
 // Make sure lights are only set when we know order will be executed
 // For example, when added to queue.
 func addToQueue(order config.OrderStruct, set_lights bool) {
-	current_state := fsm.RetrieveElevState()
+	current_state := elevsm.RetrieveElevState()
 	if orderQueue[order.ElevID][0].Floor == -1{
 		insertToQueue(order, 0)
 	} else if current_state == config.GoingUp && order.ElevID == config.Local_ID{

@@ -26,24 +26,24 @@ func InitConfigData(id int){
 
 type ElevStateType int
 const (
-	Idle		ElevStateType = 0
-	GoingUp 				= 1
-	GoingDown 	 			= 2
-	AtFloor 		 		= 3
+	Idle		ElevStateType 	= 0
+	GoingUp 					= 1
+	GoingDown 	 				= 2
+	AtFloor 		 			= 3
 )
 
 type MotorDirection int
 const (
-	MD_Up   MotorDirection = 1
-	MD_Down                = -1
-	MD_Stop                = 0
+	MD_Up   	MotorDirection 	= 1
+	MD_Down                		= -1
+	MD_Stop                		= 0
 )
 
 type ButtonType int
 const (
-	BT_HallUp				= 0
-	BT_HallDown            	= 1
-	BT_Cab                 	= 2
+	BT_HallUp		ButtonType	= 0
+	BT_HallDown            		= 1
+	BT_Cab                 		= 2
 )
 
 type ButtonEvent struct {
@@ -66,19 +66,19 @@ type OrderStruct struct
 type OrderCommand int
 const (
 	OrdrInv			OrderCommand = -1
-	CostReq 		OrderCommand = 0
-	CostSend 		OrderCommand = 1
-	OrdrAssign 		OrderCommand = 2
-	OrdrAdd 		OrderCommand = 3
-	OrdrConf 		OrderCommand = 4
-	OrdrDelete		OrderCommand = 5
-	OrdrRetrans		OrderCommand = 6
+	CostReq 					 = 0
+	CostSend 					 = 1
+	OrdrAssign 					 = 2
+	OrdrAdd 					 = 3
+	OrdrConf 					 = 4
+	OrdrDelete					 = 5
+	OrdrRetrans					 = 6
 )
 
 type ElevCommand int
 const (
-  GoUp    			ElevCommand = 0
-  GoDown    		ElevCommand = 1
-  FloorReached  	ElevCommand = 2
-  Finished  		ElevCommand = 3
+  GoUp 				ElevCommand = 0
+  GoDown    					= 1
+  FloorReached  				= 2
+  Finished  					= 3
 )

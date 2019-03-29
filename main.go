@@ -5,7 +5,7 @@ import (
     "./functionalityModule"
     "./queueModule"
     "./driverModule/elevio"
-    "./fsmModule"
+    "./elevsmModule"
     "./networkModule/bcast"
     "./networkModule/peers"
     "./backupModule"
@@ -84,7 +84,7 @@ func main() {
     go elevio.PollFloorSensor(drv_floors_run_chan)
     go elevio.PollFloorSensor(drv_floors_dead_chan)
     go elevio.PollButtons(drv_buttons_chan)//moved
-    go elevclient.IOwrapper(distr_order_chan, drv_buttons_chan)
+    go elevopr.IOwrapper(distr_order_chan, drv_buttons_chan)
 
     //Queue goroutines
     go bcast.Receiver(config.Order_port, rec_order_chan)
@@ -94,17 +94,17 @@ func main() {
     go queue.DistributeOrder(distr_order_chan, execute_chan, delete_order_chan, offline_chan, retransmit_last_order_chan, trans_order_chan)
     go queue.ReceiveOrder(execute_chan, is_dead_chan, retransmit_last_order_chan, rec_order_chan, trans_conf_chan)
     go queue.Watchdog(distr_order_chan)
-    go elevclient.ExecuteOrder(execute_chan)
+    go elevopr.ExecuteOrder(execute_chan)
 
     //Elevstatus goroutines
-    go elevclient.IsElevDead(is_dead_chan, drv_floors_dead_chan)
+    go elevopr.IsElevDead(is_dead_chan, drv_floors_dead_chan)
     go peers.CheckOffline(config.Offline_port, offline_chan)
-    go elevclient.ElevRunner(elev_cmd_chan, delete_order_chan, wakeup_chan, drv_floors_run_chan)
+    go elevopr.ElevRunner(elev_cmd_chan, delete_order_chan, wakeup_chan, drv_floors_run_chan)
 
 
     //Running goroutines
-    go elevclient.ElevWakeUp(wakeup_chan)
-    go fsm.ElevStateMachine(elev_cmd_chan)
+    go elevopr.ElevWakeUp(wakeup_chan)
+    go elevsm.ElevStateMachine(elev_cmd_chan)
 
     //Backup goroutines
     go bcast.Receiver(config.Backup_port, backup_req_chan)

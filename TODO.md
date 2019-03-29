@@ -9,11 +9,12 @@
 
 * Remove LICENSE in elevio
 
-* Rename elevatorClient -> elevClient
-
 * Update README.md
 
-*Change name of FSM : change states to behavioUr
+* Remove prints
+
+* Add sensible(!) comments 
+
 
 ## Queue:
 * Move into own functionality file
