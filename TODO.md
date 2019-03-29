@@ -43,11 +43,20 @@
 ## Checklist refactoring
 *FØKKING WORKED FOR MORE THAN 10 MINUTES FOR THE FIRST TIME, IT WAS WORTH 25+ HOURS ON THE LAB IN ONE SITTING
 *Order distribution working (timer changed)
-*Dead working (timer changed) [Dead becomes true several times - fix this]
 *Lots of gouroutines moved out
 *Wakeup, fsm, etc with new timer...
 
 ERRORS:
+*Dead working (timer changed) [Dead becomes true several times - fix this]
+Fix: Error in or in boolean statement
 *Set button light error non-existen floor 255. When watchdog kicked in.
-*Offline: Cab calls not working. Hall calls are
+
+*Offline: Cab calls not working. Hall calls are.
+Fix: Offline exception not added to distr order
+
+RESULT:
+Dead : retransmit doesn't happen, but watchdog handles retransim
+Watchdog : Not triggering button_light error (as of yet?)
+Offline : Works like a charm
+
 

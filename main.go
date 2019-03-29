@@ -72,8 +72,8 @@ func main() {
     Printf("\n\n-------------INITIALIZING-------------\n")
 
     //go backUp(id, checkbackup_chan)
-    elevio.Init(Sprintf("localhost:2000%d", config.LocalID)) //, num_floors)  //For simulators
-    //elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
+    //elevio.Init(Sprintf("localhost:2000%d", config.LocalID)) //, num_floors)  //For simulators
+    elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
 
     Printf("CHECKING FOR BACKUP...")
 
