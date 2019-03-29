@@ -34,11 +34,11 @@ func Transmitter(port int, id string, transmit_enable_chan chan bool) {
 		select {
 		case enable = <- transmit_enable_chan:
 		case <- time.After(interval):
-		//}
-			if enable && addr != nil {
-				conn.WriteTo([]byte(id), addr)
-			}
 		}
+		if enable && addr != nil {
+			conn.WriteTo([]byte(id), addr)
+		}
+
 	}
 	/*
 	for {
@@ -137,11 +137,11 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 func CheckForPeers(peers_update_chan <-chan PeerUpdate){
 	for{
 		ActivePeers = <-peers_update_chan
-		//fmt.Printf("Peer update:\n")
-		//fmt.Printf("  Peers num:    %d\n", len(ActivePeers.Peers))
-		//fmt.Printf("  Peers:    %q\n", ActivePeers.Peers)
-		//fmt.Printf("  New:      %q\n", ActivePeers.New)
-		//fmt.Printf("  Lost:     %q\n", ActivePeers.Lost)
+		fmt.Printf("Peer update:\n")
+		fmt.Printf("  Peers num:    %d\n", len(ActivePeers.Peers))
+		fmt.Printf("  Peers:    %q\n", ActivePeers.Peers)
+		fmt.Printf("  New:      %q\n", ActivePeers.New)
+		fmt.Printf("  Lost:     %q\n", ActivePeers.Lost)
 	}
 
 }

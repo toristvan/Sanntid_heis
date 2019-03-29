@@ -11,7 +11,7 @@ const Num_elevs int = 3
 var LocalID int
 const Order_port int = 20005
 const Backup_port int = 20070
-const Peer_port int = 200024
+const Peer_port int = 20024
 const Offline_port int = 20003
 
 
