@@ -52,15 +52,19 @@ func SetMotorDirection(dir config.MotorDirection) {
 }
 
 func SetButtonLamp(button config.ButtonType, floor int, value bool) {
-	_mtx.Lock()
-	defer _mtx.Unlock()
-	_conn.Write([]byte{2, byte(button), byte(floor), toByte(value)})
+	if floor > -1 || floor <= 3 && button > -1 || button <= 2{
+		_mtx.Lock()
+		defer _mtx.Unlock()
+		_conn.Write([]byte{2, byte(button), byte(floor), toByte(value)})
+	}
 }
 
 func SetFloorIndicator(floor int) {
-	_mtx.Lock()
-	defer _mtx.Unlock()
-	_conn.Write([]byte{3, byte(floor), 0, 0})
+	if floor > -1 || floor <= 3 {
+		_mtx.Lock()
+		defer _mtx.Unlock()
+		_conn.Write([]byte{3, byte(floor), 0, 0})
+	}
 }
 
 func SetDoorOpenLamp(value bool) {
@@ -85,9 +89,9 @@ func PollButtons(receiver chan<- config.ButtonEvent) {
 			for b := config.ButtonType(0); b < 3; b++ {
 				v := getButton(b, f)
 				if v != prev[f][b] && v != false {
-					fmt.Println("Poll Buttons 1")
+					//fmt.Println("Poll Buttons 1")
 					receiver <- config.ButtonEvent{f, config.ButtonType(b)}
-					fmt.Println("Poll Buttons 2")
+					//fmt.Println("Poll Buttons 2")
 				}
 				prev[f][b] = v
 			}
