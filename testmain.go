@@ -9,10 +9,10 @@ import (
     "./networkModule/bcast"
     "./networkModule/peers"
     "./backupModule"
-    "time"
+    //"time"
     ."fmt"
     //"os/exec"
-    //"strconv"
+    "strconv"
 )
 //var init_check_backup bool
 
@@ -23,7 +23,7 @@ func initElevNode() {
     Scanf("%d", &id)
 
     for id > config.Num_elevs{
-        Println("Invalid id! Shame on you")
+        Println("Invalid id! must be from 0-", config.Num_elevs-1)
         Println("Set id")
     	Scanf("%d", &id)
     }
@@ -67,7 +67,7 @@ func main() {
     Printf("\n\n-------------INITIALIZING-------------\n")
 
     //go backUp(id, checkbackup_chan)
-    elevio.Init(Sprintf("localhost:2000%d", config.LocalID)) //, num_floors)  //For simulators
+    elevio.Init(Sprintf("localhost:1000%d", config.LocalID)) //, num_floors)  //For simulators
     //elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
 
 
@@ -79,8 +79,8 @@ func main() {
     Printf("CHECKING FOR BACKUP...")
 
     //Peers goroutines
-    go peers.Transmitter(20024, config.LocalID, peer_tx_enable_chan)
-    go peers.Receiver(20024, peers_update_chan)
+    go peers.Transmitter(10024, strconv.Itoa(config.LocalID), peer_tx_enable_chan)
+    go peers.Receiver(10024, peers_update_chan)
     go peers.CheckForPeers(peers_update_chan)
 
     go queue.DistributeOrder(distr_order_chan, execute_chan, delete_order_chan, offline_chan, retransmit_last_order_chan)
@@ -88,7 +88,7 @@ func main() {
     go queue.Watchdog(distr_order_chan)
     go elevclient.ExecuteOrder(execute_chan)
     go elevclient.IsElevDead(is_dead_chan)
-    go peers.CheckOffline(20003, offline_chan)
+    go peers.CheckOffline(10003, offline_chan)
     go elevclient.ElevRunner(elev_cmd_chan, delete_order_chan )
     //Tidligere Init i elevatorClient/ElevRunner
     go elevclient.IOwrapper(distr_order_chan)
@@ -97,10 +97,10 @@ func main() {
     go bcast.Transmitter(config.Backup_port, transmit_backup_chan)
     go backup.RequestBackup(distr_order_chan, backup_req_chan, transmit_backup_chan)
 
-    for{
-      time.Sleep(15*time.Second)
-      Println("Mainloop")
+    select{
+
     }
+}
     /*
     for {
         select{
@@ -135,7 +135,6 @@ func main() {
     }
     }
     */
-}
 func backUp(id int, checkbackup_chan chan<- bool){
 /*
 

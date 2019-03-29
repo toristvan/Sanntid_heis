@@ -17,8 +17,8 @@ var Current_floor int
 
 func InitConfigData(id int){
 	LocalID   = id
-	Backup_port	= 20070 //+ LocalID
-	Order_port = 20005
+	Backup_port	= 10070 //+ LocalID
+	Order_port = 10005
 	fmt.Println("Configuration data initialized")
 }
 

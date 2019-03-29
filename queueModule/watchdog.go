@@ -7,7 +7,7 @@ import(
   "time"
   )
 
-const timeout_threshold time.Duration = 10*time.Second
+const timeout_threshold time.Duration = 30*time.Second
 
 func timeout (order config.OrderStruct) bool{
   return time.Since(order.Timestamp)>timeout_threshold;
@@ -31,7 +31,7 @@ func Watchdog(distr_order_chan chan<- config.OrderStruct){
               orderQueue[i][j] = invalidateOrder(orderQueue[i][j])
               Println("'Twas a hall call. I shall do it myself!")
             case config.BT_Cab:
-              Printf("Remember to complete your cabcall in floor %d, Elev %d :)\n", orderQueue[i][j].Floor, i)
+              Printf("Remember to complete your cabcall in floor %d, Elev %d :)\n", order_to_retransmit, i)
             }
             order_to_retransmit.Cmd = config.OrdrRetrans
             distr_order_chan <- order_to_retransmit

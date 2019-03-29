@@ -232,9 +232,10 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 				case config.OrdrRetrans:
 					new_order.Cmd = config.OrdrAdd
 					if new_order.Button != config.BT_Cab {
+						fmt.Println("Retransmit Hall with id", new_order.ElevID)
 						new_order.ElevID = config.LocalID
 						execute_chan <- new_order
-					}
+					} //If cab call, will belong to other elevator. Retransmit and add to queue.
 					addToQueue(new_order, true)
 					trans_order_chan <- new_order
 				}

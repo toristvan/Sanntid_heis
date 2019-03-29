@@ -5,6 +5,7 @@ import (
     "./networkModule/peers"
     //"./networkModule/localip"
     "./configPackage"
+	"strconv"
     "time"
     //"flag"
     //"os"
@@ -73,9 +74,11 @@ func main(){
 
 	peers_update_chan := make (chan peers.PeerUpdate)
 	peer_tx_enable := make (chan bool)
+	offline_chan := make (chan bool)
 
-	go peers.Transmitter(20024, id, peer_tx_enable)
-	go peers.Receiver(20024, peers_update_chan)
+	go peers.CheckOffline(10025, offline_chan)
+	go peers.Transmitter(10024, strconv.Itoa(id), peer_tx_enable)
+	go peers.Receiver(10024, peers_update_chan)
 
 	fmt.Println("Started")
 	for {
@@ -86,6 +89,8 @@ func main(){
 			fmt.Printf("  Peers:    %d\n", p.Peers)
 			fmt.Printf("  New:      %d\n", p.New)
 			fmt.Printf("  Lost:     %d\n", p.Lost)
+		case off := <- offline_chan:
+			fmt.Println("Offline: ", off)
 
 		}
 	}
