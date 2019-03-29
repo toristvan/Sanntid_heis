@@ -34,7 +34,8 @@ func ElevStateMachine(new_command_chan <-chan config.ElevCommand){
         elevio.SetMotorDirection(config.MD_Stop)
         //fmt.Println("At floor")
         elevio.SetDoorOpenLamp(true)
-        time.Sleep(2000*time.Millisecond)
+        <-time.After(2*time.Second)
+        //time.Sleep(2000*time.Millisecond)
         elevio.SetDoorOpenLamp(false)
       case config.Finished:
         elev_state = config.Idle 

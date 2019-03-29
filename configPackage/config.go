@@ -9,16 +9,16 @@ const Num_elevs int = 3
 //const Num_floors int = 4
 
 var LocalID int
-var Order_port int
-var Backup_port	int
+const Order_port int = 20005
+const Backup_port int = 20070
+const Peer_port int = 200024
+const Offline_port int = 20003
 
 
 var Current_floor int
 
 func InitConfigData(id int){
 	LocalID   = id
-	Backup_port	= 10070 //+ LocalID
-	Order_port = 10005
 	fmt.Println("Configuration data initialized")
 }
 

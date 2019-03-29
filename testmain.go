@@ -38,66 +38,73 @@ func initElevNode() {
 
 
 func main() {
-    //Queue channels
 
     //Peers channels
     peers_update_chan := make (chan peers.PeerUpdate)
     peer_tx_enable_chan := make (chan bool)
 
 
-    //add_order_chan := make(chan config.OrderStruct)
+    //Queue channels
+    distr_order_chan := make(chan config.OrderStruct)
     delete_order_chan := make(chan config.OrderStruct)
-    is_dead_chan := make (chan bool)
     retransmit_last_order_chan := make (chan bool)
+    execute_chan  := make (chan config.OrderStruct)
     //backup_queue_chan := make(chan int)
+    
+    is_dead_chan := make (chan bool)
+    offline_chan := make (chan bool)
+
+    //elevrunner channels
+    elev_cmd_chan := make (chan config.ElevCommand)
+
     //transmit_backup_chan := make(chan [config.Num_elevs][10]config.OrderStruct)
     transmit_backup_chan := make(chan config.OrderStruct)
     backup_req_chan := make(chan int)
 
-    //elevrunner channels
-    //raw_order_chan   := make (chan config.OrderStruct)
-    distr_order_chan := make(chan config.OrderStruct)
-    execute_chan  := make (chan config.OrderStruct)
-    elev_cmd_chan := make (chan config.ElevCommand)
-
     //checkbackup_chan := make(chan bool)
-    offline_chan := make (chan bool)
+
+    //deadlock channel
+    deadlock_chan := make (chan bool)
 
     initElevNode()
     Printf("\n\n-------------INITIALIZING-------------\n")
 
     //go backUp(id, checkbackup_chan)
-    elevio.Init(Sprintf("localhost:1000%d", config.LocalID)) //, num_floors)  //For simulators
+    elevio.Init(Sprintf("localhost:2000%d", config.LocalID)) //, num_floors)  //For simulators
     //elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
 
-
-    //ny_queue :=  queue.RetrieveQueue()
-    //backup_queue_chan <- ny_queue
-
-    //Mainloop only runs after backup-check fails (No connection with primary function)
-    //Can run without backup if backUp is commented out and only sends bool through checkbackup_chan
     Printf("CHECKING FOR BACKUP...")
 
     //Peers goroutines
-    go peers.Transmitter(10024, strconv.Itoa(config.LocalID), peer_tx_enable_chan)
-    go peers.Receiver(10024, peers_update_chan)
+    go peers.Transmitter(config.Peer_port, strconv.Itoa(config.LocalID), peer_tx_enable_chan)
+    go peers.Receiver(config.Peer_port, peers_update_chan)
     go peers.CheckForPeers(peers_update_chan)
+    
+    //IO goroutines
+    go elevclient.IOwrapper(distr_order_chan)
 
+    //Queue goroutines
     go queue.DistributeOrder(distr_order_chan, execute_chan, delete_order_chan, offline_chan, retransmit_last_order_chan)
     go queue.ReceiveOrder(execute_chan, is_dead_chan, retransmit_last_order_chan)
     go queue.Watchdog(distr_order_chan)
     go elevclient.ExecuteOrder(execute_chan)
+
+    //Elevstatus goroutines
     go elevclient.IsElevDead(is_dead_chan)
-    go peers.CheckOffline(10003, offline_chan)
+    go peers.CheckOffline(config.Offline_port, offline_chan)
     go elevclient.ElevRunner(elev_cmd_chan, delete_order_chan )
-    //Tidligere Init i elevatorClient/ElevRunner
-    go elevclient.IOwrapper(distr_order_chan)
+
+
+    //Running goroutines
     go fsm.ElevStateMachine(elev_cmd_chan)
+
+    //Backup goroutines
     go bcast.Receiver(config.Backup_port, backup_req_chan)
     go bcast.Transmitter(config.Backup_port, transmit_backup_chan)
     go backup.RequestBackup(distr_order_chan, backup_req_chan, transmit_backup_chan)
 
     select{
+      case <- deadlock_chan:
 
     }
 }

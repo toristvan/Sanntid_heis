@@ -30,6 +30,8 @@ func RequestBackup(distr_order_chan chan<- config.OrderStruct, backup_req_chan <
 	for{
 		select{
 		case backup_order := <- backup_queue_chan:
+			defer close(backup_queue_chan)
+			defer close(request_backup_chan)
 			admit_loneliness.Stop()
 			if !backup_received {
 				for i:= 0 ; i < index_buffer; i++ {
@@ -90,13 +92,10 @@ func RequestBackup(distr_order_chan chan<- config.OrderStruct, backup_req_chan <
 			*/			
 			backup_received = true
 
-		default:
+		case <- time.After(50*time.Millisecond):
 			if !backup_received {
 				request_backup_chan <-config.LocalID
 			}
-			time.Sleep(50*time.Millisecond)
-
 		}
-
 	}
 }

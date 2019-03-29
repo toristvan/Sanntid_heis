@@ -1,118 +1,119 @@
 package main
 
 import (
-	"./driverModule/elevio"
-	"./fsmModule"
-	"./queueModule"
-	"./configPackage"
-	"./IOModule"
-	."fmt"
+    "./configPackage"
+    "./functionalityModule"
+    "./queueModule"
+    "./driverModule/elevio"
+    "./fsmModule"
+    "./networkModule/bcast"
+    "./networkModule/peers"
+    "./backupModule"
+    //"time"
+    ."fmt"
+    //"os/exec"
+    "strconv"
 )
 
-type floorStatus struct{
-	 stop bool
-	 Button config.ButtonType
+func initElevNode() {
+    var id int
+
+    Println("Set id")
+    Scanf("%d", &id)
+
+    for id > config.Num_elevs{
+        Println("Invalid id! must be from 0-", config.Num_elevs-1)
+        Println("Set id")
+    	Scanf("%d", &id)
+    }
+    config.InitConfigData(id)
+    queue.InitQueue()
+    Println("ID set to: ",id,"\n Number of elevators: ", config.Num_elevs)
 }
 
-var stopArray[elevio.Num_floors] floorStatus
-	//var index = 1
-func  isEmpty(arr [elevio.Num_floors]floorStatus, from int, to int) bool{
-	  for i := from - 1 ; i < to - 1 ; i++{
-	    if arr[i].stop {
-	      return false
-	    }
-	  }
-	  return true
-}
-func dummyCostFunc(hallCall config.OrderStruct) int {
-	 return 1
-}
-func executeOrder(execute_chan <-chan config.OrderStruct, pending_orders chan<- floorStatus){
-	  select{
-	  case new_order := <- execute_chan:   //Input from queue
-	    stopArray[new_order.Floor-1].Button = new_order.Button
-	    stopArray[new_order.Floor-1].stop = true
-
-	    pending_orders <- stopArray[new_order.Floor]
-	 	}
-}
-
-<<<<<<< HEAD
-func IOwrapper(internal_new_order_chan chan<- config.OrderStruct, internal_floor_chan chan<- int){
-	var new_order config.OrderStruct
-
-	drv_floors  := make(chan int)
-	drv_buttons := make(chan config.ButtonEvent)
-
-	go elevio.PollFloorSensor(drv_floors)
-	go elevio.PollButtons(drv_buttons)
-
-	for{
-		select{
-		case button_input := <-drv_buttons:
-		    new_order.ElevID 	= config.LocalID
-			new_order.Button    = button_input.Button
-			new_order.Floor     = button_input.Floor
-			new_order.Cmd		= config.CostReq
-
-		    internal_new_order_chan <- new_order
-
-	    case floor_input := <- drv_floors: //kanskje unøvendig, ikke helt sikker
-	    	internal_floor_chan <- floor_input
-	    }
-	}
-}
-
-=======
->>>>>>> 196aef133bc1780e3ad8deef6df51c34b616a9d0
 func main() {
 
-	/*
-	queue.InitQueue()
-	elevio.Init("localhost:15657") //, num_floors)
-	go elevclient.RunElevator()
-	*/
+    //Peers channels
+    peers_update_chan           := make (chan peers.PeerUpdate)
+    peer_tx_enable_chan         := make (chan bool)
 
-	var current_floor int
-	internal_floor_chan 			:= make(chan int)
-	internal_new_order_chan 	:= make(chan config.OrderStruct)
 
-	executed_order 						:= make(chan config.OrderStruct)
-	execute_order							:= make(chan config.OrderStruct)
-	execute_chan	  					:= make(chan config.OrderStruct) //Receives first element in queue
-	executed_chan	  					:= make(chan config.OrderStruct)
-	input_queue		  					:= make(chan config.OrderStruct)
-	start_order_chan 					:= make(chan config.OrderStruct)
-	add_order_chan 						:= make(chan config.OrderStruct)
+    //Queue channels
+    rec_order_chan              := make (chan config.OrderStruct)
+    trans_conf_chan             := make (chan config.OrderStruct)
+    trans_order_chan            := make (chan config.OrderStruct)
+    distr_order_chan            := make(chan config.OrderStruct)
+    delete_order_chan           := make(chan config.OrderStruct)
+    retransmit_last_order_chan  := make (chan bool)
+    execute_chan                := make (chan config.OrderStruct)
+    //backup_queue_chan := make(chan int)
+    
+    //Elevstatus channels
+    is_dead_chan                := make (chan bool)
+    offline_chan                := make (chan bool)
 
-	current_floor = fsm.ElevatorInit()
-	Println(current_floor)
-	queue.InitQueue()
+    //elevrunner channels
+    elev_cmd_chan               := make (chan config.ElevCommand)
+    wakeup_chan                 := make (chan bool)
 
-	go IO.IOwrapper(internal_new_order_chan, internal_floor_chan)
-	go fsm.ElevStateMachine(execute_order, executed_order, internal_floor_chan)
-	go queue.Queue(input_queue, execute_chan, executed_chan)
-	go queue.DistributeOrder(start_order_chan, add_order_chan, config.LocalID)
+    //transmit_backup_chan := make(chan [config.Num_elevs][10]config.OrderStruct)
+    transmit_backup_chan        := make(chan config.OrderStruct)
+    backup_req_chan             := make(chan int)
 
-	for {
-	  select {
-	  case new_order := <- internal_new_order_chan:
-			//sende ordre til andre her
-			input_queue <- new_order
+    //checkbackup_chan := make(chan bool)
+    drv_floors_dead_chan        := make (chan int)
+    drv_floors_run_chan         := make (chan int)
+    drv_buttons_chan            := make(chan config.ButtonEvent)//moved
 
-		case exe_ord := <- execute_chan:
-			execute_order <- exe_ord
+    //deadlock channel
+    deadlock_chan               := make (chan bool)
 
-		case order_finished := <- executed_order:
-			Println("finished")
-			executed_chan <- order_finished
+    initElevNode()
+    Printf("\n\n-------------INITIALIZING-------------\n")
 
-		/*
-		case tmp := <-execute_chan:
-			 execute_order <- tmp
-		*/
+    //go backUp(id, checkbackup_chan)
+    elevio.Init(Sprintf("localhost:2000%d", config.LocalID)) //, num_floors)  //For simulators
+    //elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
 
-	  }
-	}
+    Printf("CHECKING FOR BACKUP...")
 
+    //Peers goroutines
+    go peers.Transmitter(config.Peer_port, strconv.Itoa(config.LocalID), peer_tx_enable_chan)
+    go peers.Receiver(config.Peer_port, peers_update_chan)
+    go peers.CheckForPeers(peers_update_chan)
+    
+    //IO goroutines
+    go elevio.PollFloorSensor(drv_floors_run_chan)
+    go elevio.PollFloorSensor(drv_floors_dead_chan)
+    go elevio.PollButtons(drv_buttons_chan)//moved
+    go elevclient.IOwrapper(distr_order_chan, drv_buttons_chan)
+
+    //Queue goroutines
+    go bcast.Receiver(config.Order_port, rec_order_chan)
+    go bcast.Transmitter(config.Order_port, trans_conf_chan)  
+
+    go bcast.Transmitter(config.Order_port, trans_order_chan)
+    go queue.DistributeOrder(distr_order_chan, execute_chan, delete_order_chan, offline_chan, retransmit_last_order_chan, trans_order_chan)
+    go queue.ReceiveOrder(execute_chan, is_dead_chan, retransmit_last_order_chan, rec_order_chan, trans_conf_chan)
+    go queue.Watchdog(distr_order_chan)
+    go elevclient.ExecuteOrder(execute_chan)
+
+    //Elevstatus goroutines
+    go elevclient.IsElevDead(is_dead_chan, drv_floors_dead_chan)
+    go peers.CheckOffline(config.Offline_port, offline_chan)
+    go elevclient.ElevRunner(elev_cmd_chan, delete_order_chan, wakeup_chan, drv_floors_run_chan)
+
+
+    //Running goroutines
+    go elevclient.ElevWakeUp(wakeup_chan)
+    go fsm.ElevStateMachine(elev_cmd_chan)
+
+    //Backup goroutines
+    go bcast.Receiver(config.Backup_port, backup_req_chan)
+    go bcast.Transmitter(config.Backup_port, transmit_backup_chan)
+    go backup.RequestBackup(distr_order_chan, backup_req_chan, transmit_backup_chan)
+
+    select{
+      case <- deadlock_chan:
+    }
 }

@@ -40,3 +40,14 @@
 * Order confirmation Received
 * Distribute order (often prints while crashed as well)
 
+## Checklist refactoring
+*FØKKING WORKED FOR MORE THAN 10 MINUTES FOR THE FIRST TIME, IT WAS WORTH 25+ HOURS ON THE LAB IN ONE SITTING
+*Order distribution working (timer changed)
+*Dead working (timer changed) [Dead becomes true several times - fix this]
+*Lots of gouroutines moved out
+*Wakeup, fsm, etc with new timer...
+
+ERRORS:
+*Set button light error non-existen floor 255. When watchdog kicked in.
+*Offline: Cab calls not working. Hall calls are
+

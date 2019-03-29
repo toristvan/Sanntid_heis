@@ -34,14 +34,14 @@ func isEmpty(arr [elevio.Num_floors]floorStatus, from int, to int) bool{
 }
 
 //An alert function which sends alert when elevator is idle when stopArray is not empty
-func elevWakeUp(wakeup_chan chan<- bool){
+func ElevWakeUp(wakeup_chan chan<- bool){
   for {
+    <-time.After(1*time.Second)
     if !isEmpty(stopArray, elevio.Ground_floor, elevio.Num_floors) && (fsm.RetrieveElevState() == config.Idle) {
       fmt.Println("Queue Alert 1")
       wakeup_chan <- true
       fmt.Println("Queue Alert 2")
     }
-    time.Sleep(1*time.Second)   //Unload CPU
   }
 }
 
@@ -62,12 +62,10 @@ func ExecuteOrder(execute_chan <-chan config.OrderStruct){ //, pending_orders ch
   }
 }
 
-func IOwrapper(distr_order_chan chan<- config.OrderStruct){
-  drv_buttons := make(chan config.ButtonEvent)
-  go elevio.PollButtons(drv_buttons)
+func IOwrapper(distr_order_chan chan<- config.OrderStruct, drv_buttons_chan <-chan config.ButtonEvent){
 
   for{
-      button_input := <-drv_buttons
+      button_input := <-drv_buttons_chan
       var new_order config.OrderStruct
       new_order.ElevID    = config.LocalID
       new_order.Button    = button_input.Button
@@ -101,17 +99,11 @@ func setFloorFalse() config.OrderStruct{
 }
 
 
-func ElevRunner(elev_cmd_chan chan<- config.ElevCommand, delete_order_chan chan<- config.OrderStruct /*, trans_main_chan chan<- config.OrderStruct, rec_main_chan <-chan config.OrderStruct*/){
+func ElevRunner(elev_cmd_chan chan<- config.ElevCommand, delete_order_chan chan<- config.OrderStruct, wakeup_chan <-chan bool, drv_floors_chan <-chan int){
   var current_state config.ElevStateType = config.Idle
-  drv_floors  := make(chan int)
-  wakeup_chan   := make (chan bool)
-
-  go elevWakeUp(wakeup_chan)
-  go elevio.PollFloorSensor(drv_floors)
-
   for{
     select{
-    case config.Current_floor = <- drv_floors:
+    case config.Current_floor = <- drv_floors_chan:
       current_state = fsm.RetrieveElevState()
       elevio.SetFloorIndicator(config.Current_floor)
 

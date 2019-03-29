@@ -7,7 +7,7 @@ import(
   "time"
   )
 
-const timeout_threshold time.Duration = 30*time.Second
+const timeout_threshold time.Duration = 20*time.Second
 
 func timeout (order config.OrderStruct) bool{
   return time.Since(order.Timestamp)>timeout_threshold;
@@ -17,9 +17,8 @@ func Watchdog(distr_order_chan chan<- config.OrderStruct){
   //a := NewWatchdog()
   //a.initWatchdog(10 * time.Second)
   for{
-    time.Sleep(5 * time.Second)
-    //a.updateWatchdog()
-    //a.resetWatchdog()
+    //time.Sleep(5 * time.Second)
+    <-time.After(5*time.Second)
     for i := 0; i< config.Num_elevs; i++{
       if i != config.LocalID {
         for j := 0; j< Queue_size; j++{
@@ -31,7 +30,7 @@ func Watchdog(distr_order_chan chan<- config.OrderStruct){
               orderQueue[i][j] = invalidateOrder(orderQueue[i][j])
               Println("'Twas a hall call. I shall do it myself!")
             case config.BT_Cab:
-              Printf("Remember to complete your cabcall in floor %d, Elev %d :)\n", order_to_retransmit, i)
+              Printf("Remember to complete your cabcall in floor %d, Elev %d :)\n", order_to_retransmit.ElevID, i)
             }
             order_to_retransmit.Cmd = config.OrdrRetrans
             distr_order_chan <- order_to_retransmit
