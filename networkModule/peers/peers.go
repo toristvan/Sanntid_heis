@@ -29,6 +29,18 @@ func Transmitter(port int, id string, transmit_enable_chan chan bool) {
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 
 	enable := true
+
+	for {
+		select {
+		case enable = <- transmit_enable_chan:
+		case <- time.After(interval):
+		//}
+			if enable && addr != nil {
+				conn.WriteTo([]byte(id), addr)
+			}
+		}
+	}
+	/*
 	for {
 		select {
 
@@ -39,6 +51,7 @@ func Transmitter(port int, id string, transmit_enable_chan chan bool) {
 			conn.WriteTo([]byte(id), addr)
 		}
 	}
+	*/
 }
 
 
@@ -129,6 +142,6 @@ func CheckForPeers(peers_update_chan <-chan PeerUpdate){
 		//fmt.Printf("  Peers:    %q\n", ActivePeers.Peers)
 		//fmt.Printf("  New:      %q\n", ActivePeers.New)
 		//fmt.Printf("  Lost:     %q\n", ActivePeers.Lost)
-	}	
+	}
 
 }
