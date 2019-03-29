@@ -6,9 +6,10 @@ import (
 	"net"
 	"sort"
 	"time"
-	//"strconv"
-	//"reflect"
 )
+
+/*---------------Using pre-written peers package----------------*/
+//Added functionality: func CheckOffline(), func CheckForPeers(), var ActivePeers
 
 type PeerUpdate struct {
 	Peers []string
@@ -21,7 +22,6 @@ const interval = 200* time.Millisecond
 const timeout = 1000 * time.Millisecond
 
 
-//What does this currently do?
 
 func Transmitter(port int, id string, transmit_enable_chan chan bool) {
 
@@ -40,24 +40,11 @@ func Transmitter(port int, id string, transmit_enable_chan chan bool) {
 		}
 
 	}
-	/*
-	for {
-		select {
-
-		case enable = <- transmit_enable_chan:
-		case <- time.After(interval):
-		}
-		if enable {
-			conn.WriteTo([]byte(id), addr)
-		}
-	}
-	*/
 }
 
 
 
 //function to check if node can connect to router
-//Logic for not writing to channel continously can be implemented
 func CheckOffline(port int, offline_chan chan<- bool){
 	var offline bool = false
 	for {
@@ -93,9 +80,6 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 		n, _, _ := conn.ReadFrom(buf[0:])
 
 		id := string(buf[:n])
-		//var id int
-		//fmt.Scanf(rec_id, "%d", &id)
-
 
 		// Adding new connection
 		p.New = ""

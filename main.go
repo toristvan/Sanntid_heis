@@ -9,9 +9,7 @@ import (
     "./networkModule/bcast"
     "./networkModule/peers"
     "./backupModule"
-    //"time"
     ."fmt"
-    //"os/exec"
     "strconv"
 )
 
@@ -72,13 +70,13 @@ func main() {
     Printf("\n\n-------------INITIALIZING-------------\n")
 
     //go backUp(id, checkbackup_chan)
-    //elevio.Init(Sprintf("localhost:2000%d", config.LocalID)) //, num_floors)  //For simulators
+    //elevio.Init(Sprintf("localhost:2000%d", config.Local_ID)) //, num_floors)  //For simulators
     elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
 
     Printf("CHECKING FOR BACKUP...")
 
     //Peers goroutines
-    go peers.Transmitter(config.Peer_port, strconv.Itoa(config.LocalID), peer_tx_enable_chan)
+    go peers.Transmitter(config.Peer_port, strconv.Itoa(config.Local_ID), peer_tx_enable_chan)
     go peers.Receiver(config.Peer_port, peers_update_chan)
     go peers.CheckForPeers(peers_update_chan)
     

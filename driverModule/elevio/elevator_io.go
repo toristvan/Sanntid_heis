@@ -7,21 +7,22 @@ import (
 	"net"
 	"fmt"
 )
+/*---------------Using pre-written elevio package----------------*/
+//Added functionality: 
+// - Modified func Init(): make elev go to floor at initialization and turn of all lights.
+// - func SetButtonLamp() and func SetFloorIndicator(): check boundaries before setting lights. 
 
 const _pollRate = 50 * time.Millisecond
-const Ground_floor int = 0 //Necessary?
-const Num_floors int = 4
 
 var _initialized bool = false
 var _mtx sync.Mutex
 var _conn net.Conn
 
-func Init(addr string) { //numFloors int) {
+func Init(addr string) { 
 	if _initialized {
 		fmt.Println("Driver already initialized!")
 		return
 	}
-	//_numFloors = numFloors
 	_mtx = sync.Mutex{}
 	var err error
 	_conn, err = net.Dial("tcp", addr)
@@ -31,10 +32,12 @@ func Init(addr string) { //numFloors int) {
 	_initialized = true
 
 	for i := 0; i < 3; i++ {
-		for j := 0; j < Num_floors; j++ {
+		for j := 0; j < config.Num_floors; j++ {
 			SetButtonLamp(config.ButtonType(i), j, false)
 		}
 	}
+	SetDoorOpenLamp(false)
+	SetStopLamp(false)
 	SetMotorDirection(config.MD_Down)
 	for getFloor() == -1 {
 		//wait until floor reached
@@ -52,7 +55,7 @@ func SetMotorDirection(dir config.MotorDirection) {
 }
 
 func SetButtonLamp(button config.ButtonType, floor int, value bool) {
-	if (floor > -1 && floor <= 3) && (button > -1 && button <= 2){
+	if (floor >=config.Ground_floor && floor < config.Num_floors) && (button >=config.BT_HallUp && button <= config.BT_Cab){
 		_mtx.Lock()
 		defer _mtx.Unlock()
 		_conn.Write([]byte{2, byte(button), byte(floor), toByte(value)})
@@ -60,7 +63,7 @@ func SetButtonLamp(button config.ButtonType, floor int, value bool) {
 }
 
 func SetFloorIndicator(floor int) {
-	if (floor > -1 && floor <= 3) {
+	if (floor >=config.Ground_floor && floor < config.Num_floors) {
 		_mtx.Lock()
 		defer _mtx.Unlock()
 		_conn.Write([]byte{3, byte(floor), 0, 0})
@@ -79,13 +82,11 @@ func SetStopLamp(value bool) {
 	_conn.Write([]byte{5, toByte(value), 0, 0})
 }
 
-// example
-
 func PollButtons(receiver chan<- config.ButtonEvent) {
-	prev := make([][3]bool, Num_floors)
+	prev := make([][3]bool, config.Num_floors)
 	for {
 		time.Sleep(_pollRate)
-		for f := 0; f < Num_floors; f++ {
+		for f := config.Ground_floor; f < config.Num_floors; f++ {
 			for b := config.ButtonType(0); b < 3; b++ {
 				v := getButton(b, f)
 				if v != prev[f][b] && v != false {

@@ -7,14 +7,12 @@ import (
 	"net"
 	"reflect"
 	"strings"
-	//"time"
 )
+
+/*---------------Using pre-written bcast package----------------*/
 
 // Encodes received values from `chans` into type-tagged JSON, then broadcasts
 // it on `port`
-
-
-//Dont't add time.Sleep()'s (!)
 func Transmitter(port int, chans ...interface{}) {
 	checkArgs(chans...)
 
@@ -34,27 +32,12 @@ func Transmitter(port int, chans ...interface{}) {
 	}
 
 	conn := conn.DialBroadcastUDP(port)
-	//prev code: addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 	addr,_ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
-
-	//new code start
-	//var loopbackIP string = "127.0.0.1" //standard loopback ip
-	//offline_addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", loopbackIP, port))
-	//new code end
 
 	for {
 		chosen, value, _ := reflect.Select(selectCases)
 		buf, _ := json.Marshal(value.Interface())
 		conn.WriteTo([]byte(typeNames[chosen]+string(buf)), addr)
-		//new code start
-		/*if err != nil{
-			//write to loopback if offline - Not working quite as expected. Implemented workaround in queue
-			_, err = conn.WriteTo([]byte(typeNames[chosen]+string(buf)), offline_addr)
-			if err != nil{
-				fmt.Printf("%v\n", err)
-			}
-		}*/
-		//new code end
 	}
 }
 

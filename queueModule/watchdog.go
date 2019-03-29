@@ -1,8 +1,6 @@
 package queue
 
 import(
-  //"../networkModule/bcast"
-  "../driverModule/elevio"
   "../configPackage"
   ."fmt"
   "time"
@@ -19,9 +17,9 @@ func Watchdog(distr_order_chan chan<- config.OrderStruct){
   for{
     <-time.After(5*time.Second)
     for i := 0; i< config.Num_elevs; i++{
-      if i != config.LocalID {
+      if i != config.Local_ID {
         for j := 0; j< Queue_size; j++{
-          if (orderQueue[i][j].Floor> -1) && (orderQueue[i][j].Floor < elevio.Num_floors) &&  timeout(orderQueue[i][j]){
+          if (orderQueue[i][j].Floor> -1) && (orderQueue[i][j].Floor < config.Num_floors) &&  timeout(orderQueue[i][j]){
             Println("Watchdog caught a timeout!")
             order_to_retransmit = orderQueue[i][j]
             switch orderQueue[i][j].Button {

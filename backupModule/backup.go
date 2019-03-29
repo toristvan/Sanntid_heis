@@ -4,7 +4,6 @@ import(
 	"../networkModule/bcast"
 	"../queueModule"
 	"../configPackage"
-	//"../driverModule/elevio" //remove when num_floors are removed
 	"fmt"
 	"time"
 
@@ -24,7 +23,7 @@ func RequestBackup(distr_order_chan chan<- config.OrderStruct, backup_req_chan <
 	//Transmit backup request and receive backup-queue
 	go bcast.Receiver(config.Backup_port, backup_queue_chan)
 	go bcast.Transmitter(config.Backup_port, request_backup_chan)
-	request_backup_chan <- config.LocalID
+	request_backup_chan <- config.Local_ID
 	admit_loneliness := time.NewTicker(5*time.Second)
 
 	for{
@@ -60,7 +59,7 @@ func RequestBackup(distr_order_chan chan<- config.OrderStruct, backup_req_chan <
 			}
 
 		case backup_id := <- backup_req_chan:
-			if backup_id != config.LocalID {
+			if backup_id != config.Local_ID {
 				backup_send_queue := queue.RetrieveQueue()
 				for i := 0; i < config.Num_elevs; i++ {
 					for j := 0; j < queue.Queue_size; j++ {
@@ -80,13 +79,13 @@ func RequestBackup(distr_order_chan chan<- config.OrderStruct, backup_req_chan <
 			admit_loneliness.Stop()
 			/*
 			var safety_queue [config.Num_elevs][queue.Queue_size]config.OrderStruct
-			for i := 0 ; i < elevio.Num_floors ; i++{
-				safety_queue[config.LocalID][i].Button = config.BT_Cab
-				safety_queue[config.LocalID][i].Floor = i
-				safety_queue[config.LocalID][i].ElevID = config.LocalID
-				safety_queue[config.LocalID][i].Cmd = config.OrdrAdd
-				safety_queue[config.LocalID][i].Timestamp = time.Now()
-				distr_order_chan <- safety_queue[config.LocalID][i]
+			for i := 0 ; i < config.Num_floors ; i++{
+				safety_queue[config.Local_ID][i].Button = config.BT_Cab
+				safety_queue[config.Local_ID][i].Floor = i
+				safety_queue[config.Local_ID][i].ElevID = config.Local_ID
+				safety_queue[config.Local_ID][i].Cmd = config.OrdrAdd
+				safety_queue[config.Local_ID][i].Timestamp = time.Now()
+				distr_order_chan <- safety_queue[config.Local_ID][i]
 				//time.Sleep(1*time*Millisecond)
 			}
 			*/			
@@ -94,7 +93,7 @@ func RequestBackup(distr_order_chan chan<- config.OrderStruct, backup_req_chan <
 
 		case <- time.After(50*time.Millisecond):
 			if !backup_received {
-				request_backup_chan <-config.LocalID
+				request_backup_chan <-config.Local_ID
 			}
 		}
 	}

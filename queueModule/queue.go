@@ -11,7 +11,7 @@ import (
 	)
 
 //Move to config
-const Queue_size int = (elevio.Num_floors*3)-2
+const Queue_size int = (config.Num_floors*3)-2
 
 //var orderQueue [][] config.OrderStruct
 var orderQueue [config.Num_elevs][Queue_size] config.OrderStruct
@@ -28,7 +28,7 @@ func InitQueue(){
 func invalidateOrder(order config.OrderStruct) config.OrderStruct {
 	order.Button = config.BT_HallUp
 	order.Floor = -1
-	order.Cost = config.MaxCost
+	order.Cost = config.Max_cost
 	order.Cmd = config.OrdrInv
 	order.MasterID = -1
 	order.SenderID = -1
@@ -44,7 +44,7 @@ func PrintQueue(){
 	for {
 		//for j := 0; j < config.Num_elevs ; j++{
 		for i := 0 ; i < len(orderQueue[0]) ;  i++{
-			printOrder(orderQueue[config.LocalID][i])		
+			printOrder(orderQueue[config.Local_ID][i])		
 		}
 		//} 
 		time.Sleep(5*time.Second)
@@ -68,24 +68,24 @@ func GenericCostFunction(order config.OrderStruct) int {
   case config.Idle:
   	switch distance == 0{
   	case true:
-  		cost = abs_distance - 3 - elevio.Num_floors //best option
+  		cost = abs_distance - 3 - config.Num_floors //best option
   	case false:
-    	cost =  abs_distance - 1 - elevio.Num_floors //config.Num_floors + 1 - abs_distance
+    	cost =  abs_distance - 1 - config.Num_floors //config.Num_floors + 1 - abs_distance
   	}
   case config.AtFloor:
-    cost =  abs_distance - elevio.Num_floors//config.Num_floors - abs_distance
+    cost =  abs_distance - config.Num_floors//config.Num_floors - abs_distance
   case config.GoingUp:
     switch distance < 0{ 
     case true:
       cost =  abs_distance //- abs_distance //1
       //bad way to measure? because long way down
     case false:
-      cost = abs_distance - 2 - elevio.Num_floors//config.Num_floors + 2 - abs_distance
+      cost = abs_distance - 2 - config.Num_floors//config.Num_floors + 2 - abs_distance
     }
   case config.GoingDown:
     switch distance < 0{
     case true:
-      cost = abs_distance - 2 - elevio.Num_floors//config.Num_floors + 2 - abs_distance
+      cost = abs_distance - 2 - config.Num_floors//config.Num_floors + 2 - abs_distance
       //Add what way order is going
     case false:
       //bad way to measure? because long way up
@@ -96,7 +96,7 @@ func GenericCostFunction(order config.OrderStruct) int {
   //Add whether or not there are cab calls?
   //Take into consideration what direction order is going?
   //Works surprisingly well without these factors
-  fmt.Printf("Cost for %d: %d\n", config.LocalID, cost)
+  fmt.Printf("Cost for %d: %d\n", config.Local_ID, cost)
   return cost
 }
 
@@ -120,11 +120,11 @@ func addToQueue(order config.OrderStruct, set_lights bool) {
 	current_state := fsm.RetrieveElevState()
 	if orderQueue[order.ElevID][0].Floor == -1{
 		insertToQueue(order, 0)
-	} else if current_state == config.GoingUp && order.ElevID == config.LocalID{
+	} else if current_state == config.GoingUp && order.ElevID == config.Local_ID{
 		if order.Floor < orderQueue[order.ElevID][0].Floor {
 			insertToQueue(order, 0)
 		}
-	} else if current_state == config.GoingDown && order.ElevID == config.LocalID{
+	} else if current_state == config.GoingDown && order.ElevID == config.Local_ID{
 		if order.Floor > orderQueue[order.ElevID][0].Floor {
 			insertToQueue(order, 0)
 		}
@@ -137,7 +137,7 @@ func addToQueue(order config.OrderStruct, set_lights bool) {
 		}
 	}
 	//fmt.Printf("Order added\n")
-	if set_lights && !(order.Button == config.BT_Cab && order.ElevID != config.LocalID){
+	if set_lights && !(order.Button == config.BT_Cab && order.ElevID != config.Local_ID){
 		elevio.SetButtonLamp(order.Button, order.Floor, true)
 	}
 }
@@ -151,7 +151,7 @@ func RemoveOrder(floor int, id int){
 			}
 		}
 	}
-	if id == config.LocalID {
+	if id == config.Local_ID {
 		elevio.SetButtonLamp(config.ButtonType(config.BT_Cab), floor, false)
 	} 
 	for i := config.BT_HallUp; i < config.BT_Cab  ; i++{ //
@@ -176,7 +176,7 @@ func checkIfInQueue(order config.OrderStruct) bool{
 		}
 	}else{
 		for j := 0; j < Queue_size; j++ {
-			if order.Floor == orderQueue[config.LocalID][j].Floor  && order.Button == orderQueue[config.LocalID][j].Button{
+			if order.Floor == orderQueue[config.Local_ID][j].Floor  && order.Button == orderQueue[config.Local_ID][j].Button{
 				return true
 			}
 		}			
@@ -197,7 +197,7 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 				case config.CostReq:
 					new_order.Cmd = config.CostSend
 					if offline{ //Take order self if offline
-						new_order.ElevID = config.LocalID //In case of retransmission
+						new_order.ElevID = config.Local_ID //In case of retransmission
 						addToQueue(new_order, true)
 						execute_chan <- new_order
 					} else{
@@ -214,7 +214,7 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 				case config.OrdrRetrans:
 					new_order.Cmd = config.OrdrAdd
 					if new_order.Button != config.BT_Cab {
-						new_order.ElevID = config.LocalID
+						new_order.ElevID = config.Local_ID
 						execute_chan <- new_order
 					} //If cab call, will belong to other elevator. Retransmit and add to queue.
 					addToQueue(new_order, true)
@@ -241,7 +241,7 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 
 
 func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bool, retransmit_last_order_chan chan<- bool, rec_order_chan <-chan config.OrderStruct, trans_conf_chan chan<- config.OrderStruct){
-	var lowest_cost int = config.MaxCost //max cost
+	var lowest_cost int = config.Max_cost //max cost
 	var best_elev int 	=-1
 	var master bool 	= false
 	var elev_dead bool  = false
@@ -256,13 +256,13 @@ func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bo
 			case config.CostSend:
 				if !elev_dead { //don't send cost if dead
 					new_order.Cost = GenericCostFunction(new_order)
-					new_order.ElevID = config.LocalID
+					new_order.ElevID = config.Local_ID
 					new_order.Cmd = config.OrdrAssign
 					trans_conf_chan <- new_order //transmit order cost					
 				}
 			case config.OrdrAssign:
 				//If this elev is the one to assign order.
-				if new_order.MasterID == config.LocalID && new_order.Cost < lowest_cost{  
+				if new_order.MasterID == config.Local_ID && new_order.Cost < lowest_cost{  
 					master = true
 					lowest_cost = new_order.Cost
 					best_elev = new_order.ElevID
@@ -273,7 +273,7 @@ func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bo
 				//fmt.Println("Received add request")
 				//Checkif in queue?
 				addToQueue(new_order, false)
-				new_order.SenderID = config.LocalID
+				new_order.SenderID = config.Local_ID
 				new_order.Cmd = config.OrdrConf
 				trans_conf_chan <- new_order //transmit order confirmation
 			//Add to queue and 
@@ -281,19 +281,19 @@ func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bo
 				//fmt.Println("Received order confirmation")
 				//Don't turn on lights until at least two elevators have order in queue
 				//to be sure of retransmission even though elev with order crashes
-				if new_order.SenderID != config.LocalID || len(peers.ActivePeers.Peers) < 2 {
+				if new_order.SenderID != config.Local_ID || len(peers.ActivePeers.Peers) < 2 {
 					if !checkIfInQueue(new_order){
 						addToQueue(new_order, true)
-					} else if !(new_order.Button == config.BT_Cab && new_order.ElevID != config.LocalID){
+					} else if !(new_order.Button == config.BT_Cab && new_order.ElevID != config.Local_ID){
 						elevio.SetButtonLamp(new_order.Button, new_order.Floor, true)	
 					}
-					if new_order.ElevID == config.LocalID{ //if order belongs to this elev
+					if new_order.ElevID == config.Local_ID{ //if order belongs to this elev
 						execute_chan <- new_order //add to stopArray
 					}
 				}
 			//Other elevator has finished its order
 			case config.OrdrDelete:
-				if new_order.ElevID != config.LocalID {
+				if new_order.ElevID != config.Local_ID {
 					RemoveOrder(new_order.Floor, new_order.ElevID)
 				}
 			}
@@ -311,7 +311,7 @@ func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bo
 				new_order.Cmd = config.OrdrAdd
 				trans_conf_chan <- new_order //transmit new order
 				master = false
-				lowest_cost = config.MaxCost //maxcost
+				lowest_cost = config.Max_cost //maxcost
 				best_elev = -1
 			}
 		}
@@ -321,9 +321,9 @@ func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bo
 /*
 func SpamOrder(spam_chan chan<- config.OrderStruct){
 	var dummyorder config.OrderStruct
-	dummyorder.ElevID = config.LocalID
+	dummyorder.ElevID = config.Local_ID
     dummyorder.Button    = config.BT_Cab
-    dummyorder.MasterID  = config.LocalID
+    dummyorder.MasterID  = config.Local_ID
     dummyorder.Cmd = config.OrdrAdd
 	for {
 		time.Sleep(5*time.Second)

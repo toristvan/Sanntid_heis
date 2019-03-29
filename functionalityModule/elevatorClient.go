@@ -5,7 +5,6 @@ import (
     "../queueModule"
     "../fsmModule"
     "../configPackage"
-    //"fmt"
     "time"
 )
 
@@ -15,16 +14,16 @@ type floorStatus struct{
 }
 
 //var config.Current_floor int
-var stopArray[elevio.Num_floors] floorStatus
+var stopArray[config.Num_floors] floorStatus
 
 func initStopArray(){
-  for i := elevio.Ground_floor ; i < elevio.Num_floors ; i++ {
+  for i := config.Ground_floor ; i < config.Num_floors ; i++ {
     stopArray[i].stop_up = false
     stopArray[i].stop_down = false
   }
 }
 
-func isEmpty(arr [elevio.Num_floors]floorStatus, from int, to int) bool{
+func isEmpty(arr [config.Num_floors]floorStatus, from int, to int) bool{
   	for i := from ; i < to ; i++{
     	if arr[i].stop_up || arr[i].stop_down {
       		return false
@@ -37,7 +36,7 @@ func isEmpty(arr [elevio.Num_floors]floorStatus, from int, to int) bool{
 func ElevWakeUp(wakeup_chan chan<- bool){
   for {
     <-time.After(1*time.Second)
-    if !isEmpty(stopArray, elevio.Ground_floor, elevio.Num_floors) && (fsm.RetrieveElevState() == config.Idle) {
+    if !isEmpty(stopArray, config.Ground_floor, config.Num_floors) && (fsm.RetrieveElevState() == config.Idle) {
       wakeup_chan <- true
     }
   }
@@ -65,10 +64,10 @@ func IOwrapper(distr_order_chan chan<- config.OrderStruct, drv_buttons_chan <-ch
   for{
       button_input := <-drv_buttons_chan
       var new_order config.OrderStruct
-      new_order.ElevID    = config.LocalID
+      new_order.ElevID    = config.Local_ID
       new_order.Button    = button_input.Button
       new_order.Floor     = button_input.Floor
-      new_order.MasterID  = config.LocalID
+      new_order.MasterID  = config.Local_ID
 
       if (new_order.Button != config.BT_Cab){
         new_order.Cmd = config.CostReq
@@ -84,12 +83,12 @@ func setFloorFalse() config.OrderStruct{
   var order_to_delete config.OrderStruct
 
   order_to_delete.Floor = config.Current_floor
-  order_to_delete.ElevID = config.LocalID
+  order_to_delete.ElevID = config.Local_ID
   order_to_delete.Cmd = config.OrdrDelete
 
   stopArray[config.Current_floor].stop_up = false
   stopArray[config.Current_floor].stop_down = false
-  queue.RemoveOrder(config.Current_floor, config.LocalID)
+  queue.RemoveOrder(config.Current_floor, config.Local_ID)
   return order_to_delete
 
 }
@@ -105,7 +104,7 @@ func ElevRunner(elev_cmd_chan chan<- config.ElevCommand, delete_order_chan chan<
 
       switch current_state{
         case config.GoingUp:
-          if (stopArray[config.Current_floor].stop_up) || (stopArray[config.Current_floor].stop_down && isEmpty(stopArray, config.Current_floor+1, elevio.Num_floors)) {
+          if (stopArray[config.Current_floor].stop_up) || (stopArray[config.Current_floor].stop_down && isEmpty(stopArray, config.Current_floor+1, config.Num_floors)) {
             //Stop routine
             elev_cmd_chan <- config.FloorReached
             delete_order_chan <- setFloorFalse()
@@ -116,16 +115,16 @@ func ElevRunner(elev_cmd_chan chan<- config.ElevCommand, delete_order_chan chan<
 	        	delete_order_chan <- setFloorFalse()
         	}
           //If more orders above current floor, continue upwards
-        	if !isEmpty(stopArray, config.Current_floor+1, elevio.Num_floors){
+        	if !isEmpty(stopArray, config.Current_floor+1, config.Num_floors){
             	elev_cmd_chan <- config.GoUp
-          } else if !isEmpty(stopArray, elevio.Ground_floor, config.Current_floor){
+          } else if !isEmpty(stopArray, config.Ground_floor, config.Current_floor){
             	elev_cmd_chan <- config.GoDown
           } else{
             	elev_cmd_chan <- config.Finished
           }
 
         case config.GoingDown:
-        	if (stopArray[config.Current_floor].stop_down) || (stopArray[config.Current_floor].stop_up && isEmpty(stopArray, elevio.Ground_floor, config.Current_floor)) {
+        	if (stopArray[config.Current_floor].stop_down) || (stopArray[config.Current_floor].stop_up && isEmpty(stopArray, config.Ground_floor, config.Current_floor)) {
 				    //Stop routine
         		elev_cmd_chan <- config.FloorReached
         		delete_order_chan <- setFloorFalse()
@@ -137,9 +136,9 @@ func ElevRunner(elev_cmd_chan chan<- config.ElevCommand, delete_order_chan chan<
 
         	}
           //If more orders below current floor, continue downwards
-        	if !isEmpty(stopArray, elevio.Ground_floor, config.Current_floor){
+        	if !isEmpty(stopArray, config.Ground_floor, config.Current_floor){
             	elev_cmd_chan <- config.GoDown
-          } else if !isEmpty(stopArray, config.Current_floor+1, elevio.Num_floors){
+          } else if !isEmpty(stopArray, config.Current_floor+1, config.Num_floors){
             	elev_cmd_chan <- config.GoUp
           } else{
             	elev_cmd_chan <- config.Finished
@@ -151,9 +150,9 @@ func ElevRunner(elev_cmd_chan chan<- config.ElevCommand, delete_order_chan chan<
 	        elev_cmd_chan <- config.FloorReached
           delete_order_chan <- setFloorFalse()
 	        elev_cmd_chan <- config.Finished
-	    } else if !isEmpty(stopArray, elevio.Ground_floor, config.Current_floor){
+	    } else if !isEmpty(stopArray, config.Ground_floor, config.Current_floor){
         	elev_cmd_chan <- config.GoDown
-      } else if !isEmpty(stopArray, config.Current_floor+1, elevio.Num_floors){
+      } else if !isEmpty(stopArray, config.Current_floor+1, config.Num_floors){
         	elev_cmd_chan <- config.GoUp
       } else {
         	elev_cmd_chan <- config.Finished

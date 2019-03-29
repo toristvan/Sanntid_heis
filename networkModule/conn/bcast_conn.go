@@ -7,6 +7,7 @@ import (
 	"os"
 	"syscall"
 )
+/*---------------Using pre-written conn package----------------*/
 
 func DialBroadcastUDP(port int) net.PacketConn {
 	s, _ := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
