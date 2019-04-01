@@ -19,7 +19,6 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 				//Ask other elevators for cost value
 				case config.CostReq:
 					new_order.Cmd = config.CostSend
-					//Take order self if offline
 					if offline{ 
 						new_order.ElevID = config.Local_ID
 						addToQueue(new_order, true)
@@ -27,7 +26,7 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 					} else{
 						trans_order_chan <- new_order
 					}
-				//Case for cab call. Tell others to add to queue before adding self if not offline
+				//Case for cab call. 
 				case config.OrdrAdd:
 					if offline{
 						addToQueue(new_order, true)
@@ -38,11 +37,11 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 				//Watchdog retransmission: 
 				case config.OrdrRetrans:
 					new_order.Cmd = config.OrdrAdd
-					//Add hallcall to execution
+					//Handle hallcall self
 					if new_order.Button != config.BT_Cab {
 						new_order.ElevID = config.Local_ID
 						execute_chan <- new_order
-					} //Add order to own queue, and transmit to tell others about your new order 
+					} 
 					addToQueue(new_order, true)
 					trans_order_chan <- new_order
 				}
@@ -51,14 +50,12 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 				new_order.Cmd = config.OrdrAdd
 				trans_order_chan <- new_order
 			}
-		//delete order, tell other elevators to delete
 		case new_order = <- delete_order_chan:
 			RemoveOrder(new_order.Floor, config.Local_ID)
 			trans_order_chan <- new_order
 		case <- retransmit_last_order_chan:
 			new_order.Cmd = config.CostReq 
 			trans_order_chan <- new_order 
-		//sets offline if transmit cant connect to router
 		case offline = <- offline_chan: 
 			fmt.Println("Offline:", offline)
 		}
@@ -77,9 +74,7 @@ func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bo
 		select{
 		case new_order = <-rec_order_chan:
 			switch new_order.Cmd{
-			//Send cost value for received order
 			case config.CostSend:
-				//don't send cost if dead
 				if !elev_dead { 
 					new_order.Cost = GenericCostFunction(new_order)
 					new_order.ElevID = config.Local_ID
@@ -94,14 +89,11 @@ func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bo
 					best_elev = new_order.ElevID
 					fmt.Println("Most optimal elevator: ", best_elev)
 				}
-			//Confirm order receival
-			//Add to queue without lights; fault tolerance
 			case config.OrdrAdd:
 				addToQueue(new_order, false)
 				new_order.SenderID = config.Local_ID
 				new_order.Cmd = config.OrdrConf
 				trans_conf_chan <- new_order
-			//Confirmation of an elevator having added to queue
 			case config.OrdrConf:
 				//Don't turn on lights until at least one (other) elevator have order in queue
 				//to be sure of retransmission even though elev with order crashes
@@ -116,7 +108,6 @@ func ReceiveOrder(execute_chan chan<- config.OrderStruct, is_dead_chan <-chan bo
 						execute_chan <- new_order 
 					}
 				}
-			//Other elevator has finished its order - remove from queue (watchdog & backup)
 			case config.OrdrDelete:
 				if new_order.ElevID != config.Local_ID {
 					RemoveOrder(new_order.Floor, new_order.ElevID)
