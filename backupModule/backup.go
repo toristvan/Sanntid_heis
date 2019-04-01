@@ -71,7 +71,7 @@ func RequestBackup(distr_order_chan chan<- config.OrderStruct) {
 
 func TransmitBackup(received_backup_request_chan <-chan int, transmit_backup_chan chan<- config.OrderStruct) {
 	for {
-		backup_id := <- received_backup_request_chan:
+		backup_id := <- received_backup_request_chan
 		if backup_id != config.Local_ID {
 			backup_send_queue := queue.RetrieveQueue()
 			for i := 0; i < config.Num_elevs; i++ {
