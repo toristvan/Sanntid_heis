@@ -2,7 +2,7 @@ Elevator Project
 ================
 Software for controlling `n` elevators working in parallel across `m` floors.
 
-###Key design points:
+### Key design points:
  - UDP broadcast: for sending and receiving orders 
  - Peer-to-peer: communication for keeping track of the amount of nodes on the network. 
  - Watchdog: handling orders which are not confirmed executed. 
@@ -16,7 +16,7 @@ The software is fault tolerant in accordance with the given specifications.
   - When receiving an order, the button lights are not activated unless at least the node knows that at least one other elevator has received that order.
 
 The software consists of the following modules:
-- **backupModule*
+- **backupModule**
   - The backup module handles the backup functionality of the software. It includes a transmitting function and a receiving function. The node will at initialization request backup from other active peers, if any.
   - Interacts with:
     - **Network module** for transmitting and requesting backup.
