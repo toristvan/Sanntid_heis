@@ -68,12 +68,10 @@ func GenericCostFunction(order config.OrderStruct) int {
     return cost
 }
 
-//For other modules to read queue
 func RetrieveQueue() [config.Num_elevs][config.Queue_size]config.OrderStruct{
     return orderQueue
 }
 
-//Inserts order into queue at given index
 func insertOrder(order config.OrderStruct, index int){
     for i := config.Queue_size - 1; i > index; i--{
         orderQueue[order.ElevID][i] = orderQueue[order.ElevID][i-1]
@@ -82,7 +80,6 @@ func insertOrder(order config.OrderStruct, index int){
     orderQueue[order.ElevID][index] = order
 }
 
-//Add orders to designated location in queue
 func addToQueue(order config.OrderStruct, set_lights bool) {
     current_state := elevsm.RetrieveElevState()
     if orderQueue[order.ElevID][0].Floor == -1{
@@ -113,13 +110,11 @@ func addToQueue(order config.OrderStruct, set_lights bool) {
 func RemoveOrder(floor int, id int){
     for i := 0; i < config.Num_elevs; i++ {
         for j := 0; j < config.Queue_size; j++{
-            //Remove all orders on floor except cab calls not on ID
             if  orderQueue[i][j].Floor == floor && (orderQueue[i][j].Button != config.BT_Cab || id == i) { 
                 orderQueue[i][j] = invalidateOrder(orderQueue[i][j])
             }
         }
     }
-    //Turnning off lights
     if id == config.Local_ID {
         elevio.SetButtonLamp(config.ButtonType(config.BT_Cab), floor, false)
     } 
@@ -128,8 +123,6 @@ func RemoveOrder(floor int, id int){
     }
 }
 
-//Check if equivalent order in queue.
-//Only considers orders executable by self
 func inQueue(order config.OrderStruct) bool{
     if order.Button != config.BT_Cab{
         for i := 0; i < config.Num_elevs; i++ {
