@@ -101,7 +101,8 @@ func main() {
     //Backup goroutines
     go bcast.Receiver(config.Backup_port, received_backup_request_chan)
     go bcast.Transmitter(config.Backup_port, transmit_backup_chan)
-    go backup.RequestBackup(distr_order_chan, received_backup_request_chan, transmit_backup_chan)
+    go backup.RequestBackup(distr_order_chan)
+    go backup.TransmitBackup(received_backup_request_chan, transmit_backup_chan)
 
     select{
 

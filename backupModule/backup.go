@@ -11,7 +11,7 @@ import(
 
 //Consists of both receiving and transmitting end. Channel to ask for backup is closed once backup is received.
 //The channel will trigger transmitting end to transmit backup to ID requesting it.
-func RequestBackup(distr_order_chan chan<- config.OrderStruct, received_backup_request_chan <-chan int, transmit_backup_chan chan<- config.OrderStruct) {
+func RequestBackup(distr_order_chan chan<- config.OrderStruct) {
 	var backup_received bool = false
 	var buffer [18]config.OrderStruct
 	var index_buffer int = 0
@@ -28,21 +28,6 @@ func RequestBackup(distr_order_chan chan<- config.OrderStruct, received_backup_r
 
 	for{
 		select{
-		//Transmitting end
-		case backup_id := <- received_backup_request_chan:
-			if backup_id != config.Local_ID {
-				backup_send_queue := queue.RetrieveQueue()
-				for i := 0; i < config.Num_elevs; i++ {
-					for j := 0; j < config.Queue_size; j++ {
-						backup_send_queue[i][j].Cmd = config.OrdrAdd
-						//Add to buffer if valid order
-						if backup_send_queue[i][j].Floor != -1 {
-							transmit_backup_chan <- backup_send_queue[i][j]
-						}
-					}
-				}
-			}
-		//Receiving end
 		case backup_order := <- receive_backup_chan:
 			defer close(receive_backup_chan)
 			defer close(request_backup_chan)
@@ -79,6 +64,24 @@ func RequestBackup(distr_order_chan chan<- config.OrderStruct, received_backup_r
 		case <- time.After(50*time.Millisecond):
 			if !backup_received {
 				request_backup_chan <-config.Local_ID
+			}
+		}
+	}
+}
+
+func TransmitBackup(received_backup_request_chan <-chan int, transmit_backup_chan chan<- config.OrderStruct) {
+	for {
+		backup_id := <- received_backup_request_chan:
+		if backup_id != config.Local_ID {
+			backup_send_queue := queue.RetrieveQueue()
+			for i := 0; i < config.Num_elevs; i++ {
+				for j := 0; j < config.Queue_size; j++ {
+					backup_send_queue[i][j].Cmd = config.OrdrAdd
+					//Add to buffer if valid order
+					if backup_send_queue[i][j].Floor != -1 {
+						transmit_backup_chan <- backup_send_queue[i][j]
+					}
+				}
 			}
 		}
 	}
