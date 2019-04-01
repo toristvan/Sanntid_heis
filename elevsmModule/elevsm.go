@@ -9,12 +9,10 @@ import(
 var elev_state config.ElevStateType
 var new_command config.ElevCommand
 
-//For other modules to read elev_state
 func RetrieveElevState() config.ElevStateType{
     return elev_state
 }
 
-//Changes elev_state based on command on channel
 func ElevStateMachine(elev_cmd_chan <-chan config.ElevCommand){
     elev_state = config.Idle
     for{

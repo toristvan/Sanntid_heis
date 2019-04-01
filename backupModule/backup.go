@@ -9,8 +9,6 @@ import(
 
 )
 
-//Consists of both receiving and transmitting end. Channel to ask for backup is closed once backup is received.
-//The channel will trigger transmitting end to transmit backup to ID requesting it.
 func RequestBackup(distr_order_chan chan<- config.OrderStruct) {
 	var backup_received bool = false
 	var buffer [18]config.OrderStruct
@@ -20,7 +18,6 @@ func RequestBackup(distr_order_chan chan<- config.OrderStruct) {
 	receive_backup_chan := make(chan config.OrderStruct)
 	request_backup_chan := make(chan int)
 
-	//Transmit backup request and receive backup-queue
 	go bcast.Receiver(config.Backup_port, receive_backup_chan)
 	go bcast.Transmitter(config.Backup_port, request_backup_chan)
 	request_backup_chan <- config.Local_ID
@@ -49,13 +46,12 @@ func RequestBackup(distr_order_chan chan<- config.OrderStruct) {
 						for i := 0; i < index_buffer; i++ { 
 							distr_order_chan <- buffer[i]
 						}
-					//All backup orders received
 					backup_received = true  
 					fmt.Println("\nBACKUP RECEIVED\n")
     				fmt.Printf("\n\n-------------INITIALIZED-------------\n")
 				}
 			}
-		//If too long without receiving timeout
+		//If too long without receiving ->timeout
 		case <- admit_loneliness.C:
 			fmt.Println("\nNO BACKUP RECEIVED\n")
     		fmt.Printf("\n\n-------------INITIALIZED-------------\n")

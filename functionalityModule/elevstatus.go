@@ -18,7 +18,6 @@ func IsElevDead(is_dead_chan chan<- bool, drv_floors_chan <-chan int){
 					is_dead_chan <- dead
 				}
 			case <- time.After(5*time.Second):
-				//Needs double check here (same as in for-statement) in case state changes
 				if !dead && (elevsm.RetrieveElevState() == config.GoingUp || elevsm.RetrieveElevState() == config.GoingDown){
 					dead = true
 					is_dead_chan <- dead

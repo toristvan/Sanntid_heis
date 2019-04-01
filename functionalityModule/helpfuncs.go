@@ -11,7 +11,6 @@ type floorStatus struct{
     stop_down bool
 }
 
-//What floors to stop at
 var stopArray[config.Num_floors] floorStatus
 var current_floor int
 
@@ -26,7 +25,6 @@ func GetCurrentFloor() int {
     return current_floor
 }
 
-//If no more stops scheduled
 func isEmpty(arr [config.Num_floors]floorStatus, from int, to int) bool{
     for i := from ; i < to ; i++{
         if arr[i].stop_up || arr[i].stop_down {
@@ -36,7 +34,6 @@ func isEmpty(arr [config.Num_floors]floorStatus, from int, to int) bool{
     return true
 }
 
-//Sends alert when elevator is idle and stopArray is not empty
 func ElevWakeUp(wakeup_chan chan<- bool){
     for {
         <-time.After(1*time.Second)
@@ -46,7 +43,6 @@ func ElevWakeUp(wakeup_chan chan<- bool){
     }
 }
 
-//Schedules stop in stopArray
 func ExecuteOrder(execute_chan <-chan config.OrderStruct){
     for {
         new_order := <- execute_chan 
@@ -62,7 +58,6 @@ func ExecuteOrder(execute_chan <-chan config.OrderStruct){
     }
 }
 
-//Converts buttonpress to orders
 func IOwrapper(distr_order_chan chan<- config.OrderStruct, drv_buttons_chan <-chan config.ButtonEvent){
     for{
         button_input := <-drv_buttons_chan
@@ -81,7 +76,6 @@ func IOwrapper(distr_order_chan chan<- config.OrderStruct, drv_buttons_chan <-ch
     }
 }
 
-//Removes scheduled stop from stopArray. Returns an order with delete command
 func setFloorFalse() config.OrderStruct{
     var order_to_delete config.OrderStruct
     order_to_delete.Floor = current_floor
