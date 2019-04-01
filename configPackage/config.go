@@ -17,7 +17,6 @@ const Peer_port int = 20024
 const Offline_port int = 20003
 
 var Local_ID int
-var Current_floor int
 
 
 func InitConfigData(id int){

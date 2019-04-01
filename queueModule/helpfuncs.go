@@ -1,10 +1,10 @@
 package queue
 
 import (
+    "../functionalityModule"
     "../driverModule/elevio"
     "../elevsmModule"
     "../configPackage"
-    "fmt"
     "time"
 )
 
@@ -33,7 +33,7 @@ func invalidateOrder(order config.OrderStruct) config.OrderStruct {
 //Lower cost = better suited for order
 func GenericCostFunction(order config.OrderStruct) int {
     var cost int
-    var distance int = config.Current_floor - order.Floor
+    var distance int = elevopr.GetCurrentFloor() - order.Floor
     var abs_distance int
     if distance < 0 {
         abs_distance = -distance
@@ -65,7 +65,6 @@ func GenericCostFunction(order config.OrderStruct) int {
         cost = abs_distance 
         }
     }
-    fmt.Printf("Cost for %d: %d\n", config.Local_ID, cost)
     return cost
 }
 

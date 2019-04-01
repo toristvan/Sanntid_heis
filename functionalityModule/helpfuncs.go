@@ -1,7 +1,6 @@
 package elevopr
 
 import (
-    "../queueModule"
     "../elevsmModule"
     "../configPackage"
     "time"
@@ -14,12 +13,17 @@ type floorStatus struct{
 
 //What floors to stop at
 var stopArray[config.Num_floors] floorStatus
+var current_floor int
 
 func initStopArray(){
     for i := config.Ground_floor ; i < config.Num_floors ; i++ {
         stopArray[i].stop_up = false
         stopArray[i].stop_down = false
     }
+}
+
+func GetCurrentFloor() int {
+    return current_floor
 }
 
 //If no more stops scheduled
@@ -80,12 +84,11 @@ func IOwrapper(distr_order_chan chan<- config.OrderStruct, drv_buttons_chan <-ch
 //Removes scheduled stop from stopArray. Returns an order with delete command
 func setFloorFalse() config.OrderStruct{
     var order_to_delete config.OrderStruct
-    order_to_delete.Floor = config.Current_floor
+    order_to_delete.Floor = current_floor
     order_to_delete.ElevID = config.Local_ID
     order_to_delete.Cmd = config.OrdrDelete
 
-    stopArray[config.Current_floor].stop_up = false
-    stopArray[config.Current_floor].stop_down = false
-    queue.RemoveOrder(config.Current_floor, config.Local_ID)
+    stopArray[current_floor].stop_up = false
+    stopArray[current_floor].stop_down = false
     return order_to_delete
 }

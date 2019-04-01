@@ -51,10 +51,10 @@ func DistributeOrder(distr_order_chan <-chan config.OrderStruct, execute_chan ch
 				new_order.Cmd = config.OrdrAdd
 				trans_order_chan <- new_order
 			}
+		//delete order, tell other elevators to delete
 		case new_order = <- delete_order_chan:
-			if new_order.Cmd == config.OrdrDelete{
-				trans_order_chan <- new_order
-			}
+			RemoveOrder(new_order.Floor, config.Local_ID)
+			trans_order_chan <- new_order
 		case <- retransmit_last_order_chan:
 			new_order.Cmd = config.CostReq 
 			trans_order_chan <- new_order 
