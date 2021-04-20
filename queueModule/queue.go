@@ -1,9 +1,9 @@
 package queue
 
 import (
-	"../driverModule/elevio"
-    "../networkModule/peers"
-	"../configPackage"
+	"github.com/toristvan/elevator/driverModule/elevio"
+    "github.com/toristvan/elevator/networkModule/peers"
+	"github.com/toristvan/elevator/configPackage"
 	"fmt"
 	"time"
 	)

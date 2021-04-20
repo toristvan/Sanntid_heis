@@ -1,8 +1,8 @@
 package elevopr
 
 import (
-    "../elevsmModule"
-    "../configPackage"
+    "github.com/toristvan/elevator/elevsmModule"
+    "github.com/toristvan/elevator/configPackage"
     "time"
 )
 

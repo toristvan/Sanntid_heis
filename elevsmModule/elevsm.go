@@ -1,8 +1,8 @@
 package elevsm
 
 import(
-    "../configPackage"
-    "../driverModule/elevio"
+    "github.com/toristvan/elevator/configPackage"
+    "github.com/toristvan/elevator/driverModule/elevio"
     "time"
 )
 

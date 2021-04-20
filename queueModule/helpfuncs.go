@@ -1,10 +1,10 @@
 package queue
 
 import (
-    "../functionalityModule"
-    "../driverModule/elevio"
-    "../elevsmModule"
-    "../configPackage"
+    "github.com/toristvan/elevator/functionalityModule"
+    "github.com/toristvan/elevator/driverModule/elevio"
+    "github.com/toristvan/elevator/elevsmModule"
+    "github.com/toristvan/elevator/configPackage"
     "time"
 )
 

@@ -1,9 +1,9 @@
 package elevopr
 
 import (
-    "../driverModule/elevio"
-    "../elevsmModule"
-    "../configPackage"
+    "github.com/toristvan/elevator/driverModule/elevio"
+    "github.com/toristvan/elevator/elevsmModule"
+    "github.com/toristvan/elevator/configPackage"
 )
 
 func ElevOperator(elev_cmd_chan chan<- config.ElevCommand, delete_order_chan chan<- config.OrderStruct, wakeup_chan <-chan bool, drv_floors_chan <-chan int){

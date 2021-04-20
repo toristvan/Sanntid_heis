@@ -1,7 +1,7 @@
 package bcast
 
 import (
-	"../conn"
+	"github.com/toristvan/elevator/networkModule/conn"
 	"encoding/json"
 	"fmt"
 	"net"

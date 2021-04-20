@@ -1,7 +1,7 @@
 package peers
 
 import (
-	"../conn"
+	"github.com/toristvan/elevator/networkModule/conn"
 	"fmt"
 	"net"
 	"sort"

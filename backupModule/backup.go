@@ -1,9 +1,9 @@
 package backup
 
 import(
-	"../networkModule/bcast"
-	"../queueModule"
-	"../configPackage"
+	"github.com/toristvan/elevator/networkModule/bcast"
+	"github.com/toristvan/elevator/queueModule"
+	"github.com/toristvan/elevator/configPackage"
 	"fmt"
 	"time"
 

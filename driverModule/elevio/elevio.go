@@ -1,7 +1,7 @@
 package elevio
 
 import (
-	"../../configPackage"
+	"github.com/toristvan/elevator/configPackage"
 	"time"
 	"sync"
 	"net"

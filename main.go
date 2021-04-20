@@ -1,14 +1,14 @@
 package main
 
 import (
-    "./configPackage"
-    "./functionalityModule"
-    "./queueModule"
-    "./driverModule/elevio"
-    "./elevsmModule"
-    "./networkModule/bcast"
-    "./networkModule/peers"
-    "./backupModule"
+    "github.com/toristvan/elevator/configPackage"
+    "github.com/toristvan/elevator/functionalityModule"
+    "github.com/toristvan/elevator/queueModule"
+    "github.com/toristvan/elevator/driverModule/elevio"
+    "github.com/toristvan/elevator/elevsmModule"
+    "github.com/toristvan/elevator/networkModule/bcast"
+    "github.com/toristvan/elevator/networkModule/peers"
+    "github.com/toristvan/elevator/backupModule"
     ."fmt"
     "strconv"
 )
@@ -64,8 +64,8 @@ func main() {
     initElevNode()
     Printf("\n\n-------------INITIALIZING-------------\n")
 
-    //elevio.Init(Sprintf("localhost:2000%d", config.Local_ID)) //, num_floors)  //For simulators
-    elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
+    elevio.Init(Sprintf("localhost:2000%d", config.Local_ID)) //, num_floors)  //For simulators
+    //elevio.Init(Sprintf("localhost:15657"))//, num_floors)                      //For elevators
 
     Printf("CHECKING FOR BACKUP...")
 

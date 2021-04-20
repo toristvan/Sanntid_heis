@@ -1,7 +1,7 @@
 package queue
 
 import(
-    "../configPackage"
+    "github.com/toristvan/elevator/configPackage"
     ."fmt"
     "time"
 )
