@@ -30,6 +30,9 @@ func ElevStateMachine(elev_cmd_chan <-chan config.ElevCommand){
                 elevio.SetMotorDirection(config.MD_Stop)
                 elevio.SetDoorOpenLamp(true)
                 <-time.After(2*time.Second)
+                for elevio.GetObstruction() {
+                    <-time.After(1*time.Second)
+                }
                 elevio.SetDoorOpenLamp(false)
             case config.Finished:
                 elev_state = config.Idle 

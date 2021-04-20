@@ -126,7 +126,7 @@ func PollObstructionSwitch(receiver chan<- bool) {
 	prev := false
 	for {
 		time.Sleep(_pollRate)
-		v := getObstruction()
+		v := GetObstruction()
 		if v != prev {
 			receiver <- v
 		}
@@ -165,7 +165,7 @@ func getStop() bool {
 	return toBool(buf[1])
 }
 
-func getObstruction() bool {
+func GetObstruction() bool {
 	_mtx.Lock()
 	defer _mtx.Unlock()
 	_conn.Write([]byte{9, 0, 0, 0})
