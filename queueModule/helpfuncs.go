@@ -51,14 +51,14 @@ func GenericCostFunction(order config.OrderStruct) int {
     case config.AtFloor:
         cost =  abs_distance - config.Num_floors
     case config.GoingUp:
-        switch distance < 0{ 
+        switch distance > 0{ 
         case true:
             cost =  abs_distance
         case false:
             cost = abs_distance - 2 - config.Num_floors
         }
     case config.GoingDown:
-        switch distance < 0{
+        switch distance > 0{
         case true:
             cost = abs_distance - 2 - config.Num_floors
         case false:
